@@ -69,33 +69,35 @@ Portal: `http://localhost` (or your configured host)
 | POST | `/api/admin/devices/:uid/control` | Bearer JWT | Send touch packet |
 | WS | `/ws/admin` | OIDC token in auth | WebRTC signaling relay |
 
+## Deployment
+
+**GitHub stores the code; you install manually on your server.**
+
+1. Push or pull from this repository as needed.
+2. On your Ubuntu 22.04 server, clone the repo and run Docker Compose.
+
+Full steps: [docs/manual-install.md](docs/manual-install.md)
+
+```bash
+git clone https://github.com/cfd2474/CFD_Remote_Assist_Portal.git /opt/cfd-remote-assist
+cd /opt/cfd-remote-assist
+cp .env.example .env   # edit with your values
+docker compose up -d --build
+```
+
+To update after new code is pushed:
+
+```bash
+cd /opt/cfd-remote-assist && git pull && docker compose up -d --build
+```
+
 ## Configuration
 
 See:
 
+- [docs/manual-install.md](docs/manual-install.md) — server setup on Ubuntu 22.04
 - [docs/authentik-setup.md](docs/authentik-setup.md) — OIDC provider setup
 - [docs/mdm-config.md](docs/mdm-config.md) — Android MDM managed config
-
-## GitHub deployment (Ubuntu 22.04)
-
-Configure these **repository secrets**:
-
-| Secret | Description |
-|--------|-------------|
-| `DEPLOY_HOST` | Target server IP/hostname |
-| `DEPLOY_USER` | SSH user (e.g. `deploy`) |
-| `DEPLOY_SSH_KEY` | Private SSH key |
-| `POSTGRES_USER` | Database user |
-| `POSTGRES_PASSWORD` | Database password |
-| `POSTGRES_DB` | Database name |
-| `PUBLIC_BASE_URL` | Public HTTPS URL |
-| `OIDC_ISSUER` | Authentik issuer URL |
-| `OIDC_AUDIENCE` | OIDC audience / client ID |
-| `OIDC_CLIENT_ID` | OIDC client ID |
-| `OIDC_JWKS_URI` | Optional JWKS override |
-| `CORS_ORIGIN` | Portal origin URL |
-
-On the Ubuntu host, install Docker and Docker Compose, then push to `main` to deploy.
 
 ## Local development
 
@@ -116,7 +118,6 @@ cd web && cp .env.example .env && npm install && npm run dev
 server/          Node.js API + WebSocket hub
 web/             React admin portal (Vite)
 nginx/           Reverse proxy config + TLS certs
-docs/            Authentik & MDM setup guides
+docs/            Install, Authentik & MDM guides
 docker-compose.yml
-.github/workflows/deploy.yml
 ```
