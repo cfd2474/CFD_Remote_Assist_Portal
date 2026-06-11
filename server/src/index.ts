@@ -1,0 +1,67 @@
+import http from "http";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { WebSocketServer } from "ws";
+import { config } from "./config.js";
+import { deviceApiRouter } from "./routes/deviceApi.js";
+import { adminApiRouter } from "./routes/adminApi.js";
+import { attachWebSocketHandlers } from "./ws/handlers.js";
+
+const app = express();
+
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(
+  cors({
+    origin: config.corsOrigin,
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "1mb" }));
+
+const deviceLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", service: "cfd-remote-assist" });
+});
+
+app.use("/api/v1", deviceLimiter, deviceApiRouter);
+app.use("/api/admin", adminApiRouter);
+
+const server = http.createServer(app);
+
+const deviceWss = new WebSocketServer({ noServer: true });
+const adminWss = new WebSocketServer({ noServer: true });
+
+attachWebSocketHandlers(deviceWss, "/ws/device");
+attachWebSocketHandlers(adminWss, "/ws/admin");
+
+server.on("upgrade", (req, socket, head) => {
+  const url = req.url ?? "";
+
+  if (url.startsWith("/ws/device")) {
+    deviceWss.handleUpgrade(req, socket, head, (ws) => {
+      deviceWss.emit("connection", ws, req);
+    });
+    return;
+  }
+
+  if (url.startsWith("/ws/admin")) {
+    adminWss.handleUpgrade(req, socket, head, (ws) => {
+      adminWss.emit("connection", ws, req);
+    });
+    return;
+  }
+
+  socket.destroy();
+});
+
+server.listen(config.port, () => {
+  console.log(`CFD Remote Assist server listening on port ${config.port}`);
+});

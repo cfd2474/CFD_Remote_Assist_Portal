@@ -1,0 +1,156 @@
+import { Router } from "express";
+import { requireAdmin } from "../auth/oidc.js";
+import {
+  listDevices,
+  getDevice,
+  getTelemetryHistory,
+  getDeviceEvents,
+} from "../services/devices.js";
+import { hub } from "../ws/hub.js";
+import type { ControlPacket, DeviceCommand } from "../types.js";
+
+export const adminApiRouter = Router();
+
+adminApiRouter.use(requireAdmin);
+
+adminApiRouter.get("/devices", async (_req, res) => {
+  try {
+    const devices = await listDevices();
+    const sanitized = devices.map((d) => ({
+      uid: d.uid,
+      serial: d.serial,
+      imei: d.imei,
+      device_name: d.device_name,
+      model: d.model,
+      phone_number: d.phone_number,
+      app_version: d.app_version,
+      registered_at: d.registered_at,
+      last_seen_at: d.last_seen_at,
+      last_lat: d.last_lat,
+      last_lon: d.last_lon,
+      last_battery: d.last_battery,
+      last_is_charging: d.last_is_charging,
+      last_telemetry_at: d.last_telemetry_at,
+      is_online: d.is_online || hub.isDeviceOnline(d.uid),
+      remote_admin_active: d.remote_admin_active,
+    }));
+    res.json({ devices: sanitized });
+  } catch (err) {
+    console.error("List devices error:", err);
+    res.status(500).json({ error: "Failed to list devices" });
+  }
+});
+
+adminApiRouter.get("/devices/:uid", async (req, res) => {
+  try {
+    const device = await getDevice(req.params.uid);
+    if (!device) {
+      res.status(404).json({ error: "Device not found" });
+      return;
+    }
+
+    const { connection_secret: _, ...sanitized } = device;
+    res.json({
+      device: {
+        ...sanitized,
+        is_online: sanitized.is_online || hub.isDeviceOnline(sanitized.uid),
+      },
+    });
+  } catch (err) {
+    console.error("Get device error:", err);
+    res.status(500).json({ error: "Failed to get device" });
+  }
+});
+
+adminApiRouter.get("/devices/:uid/telemetry", async (req, res) => {
+  try {
+    const history = await getTelemetryHistory(req.params.uid);
+    res.json({ telemetry: history });
+  } catch (err) {
+    console.error("Telemetry history error:", err);
+    res.status(500).json({ error: "Failed to get telemetry history" });
+  }
+});
+
+adminApiRouter.get("/devices/:uid/events", async (req, res) => {
+  try {
+    const events = await getDeviceEvents(req.params.uid);
+    res.json({ events });
+  } catch (err) {
+    console.error("Events history error:", err);
+    res.status(500).json({ error: "Failed to get events" });
+  }
+});
+
+adminApiRouter.post("/devices/:uid/command", async (req, res) => {
+  const command = req.body?.command as DeviceCommand;
+  const valid: DeviceCommand[] = [
+    "TRIGGER_PING",
+    "REQUEST_LOCATION",
+    "START_REMOTE_ADMIN",
+    "STOP_REMOTE_ADMIN",
+  ];
+
+  if (!valid.includes(command)) {
+    res.status(400).json({ error: "Invalid command" });
+    return;
+  }
+
+  try {
+    const device = await getDevice(req.params.uid);
+    if (!device) {
+      res.status(404).json({ error: "Device not found" });
+      return;
+    }
+
+    const sent = hub.sendCommand(
+      req.params.uid,
+      command,
+      device.connection_secret
+    );
+
+    if (!sent) {
+      res.status(409).json({
+        error: "Device is not connected via WebSocket",
+        hint: "Ensure the Android app maintains a persistent WebSocket to /ws/device",
+      });
+      return;
+    }
+
+    res.json({ ok: true, command });
+  } catch (err) {
+    console.error("Command error:", err);
+    res.status(500).json({ error: "Failed to send command" });
+  }
+});
+
+adminApiRouter.post("/devices/:uid/control", async (req, res) => {
+  const packet = req.body as ControlPacket;
+
+  if (!packet?.action) {
+    res.status(400).json({ error: "action is required" });
+    return;
+  }
+
+  try {
+    const sent = hub.sendControl(req.params.uid, packet);
+    if (!sent) {
+      res.status(409).json({ error: "Device is not connected" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Control error:", err);
+    res.status(500).json({ error: "Failed to send control packet" });
+  }
+});
+
+adminApiRouter.get("/me", (req, res) => {
+  res.json({
+    user: {
+      email: req.adminUser?.email,
+      username: req.adminUser?.preferred_username,
+      name: req.adminUser?.name,
+    },
+  });
+});
