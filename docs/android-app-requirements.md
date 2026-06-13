@@ -395,6 +395,29 @@ Full detail: [android-webrtc-requirements.md](android-webrtc-requirements.md)
 
 Without this message, remote view will fail even if the app shows "remote connected" locally.
 
+### ICE candidates are required (common failure)
+
+Sending only the SDP **answer** is not enough. The portal diagnostics will show **Answer received: Yes** but **Device ICE: 0** and video will not start.
+
+After `createAnswer()`, register `PeerConnection.Observer.onIceCandidate` (or equivalent) and **send every candidate** to the server:
+
+```json
+{
+  "type": "webrtc",
+  "ice": {
+    "candidate": "candidate:842163049 1 udp 1677729535 203.0.113.10 54400 typ srflx ...",
+    "sdpMid": "0",
+    "sdpMLineIndex": 0
+  }
+}
+```
+
+Send each candidate on the **same WebSocket** used for the answer, or `POST /api/v1/signaling` per candidate.
+
+Do **not** reconnect the WebSocket during an active remote session — it disrupts signaling.
+
+If using trickle ICE, candidates arrive after the answer; both are required. Bundling all candidates inside the SDP string can work but only if the SDP actually contains `a=candidate:` lines.
+
 ### HTTP signaling fallback (recommended)
 
 If WebSocket signaling is unreliable, use these REST endpoints in parallel:

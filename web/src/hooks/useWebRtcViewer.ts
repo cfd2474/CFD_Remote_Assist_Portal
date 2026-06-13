@@ -22,6 +22,13 @@ const OFFER_RETRY_MS = 10_000;
 const MAX_OFFER_ATTEMPTS = 4;
 const NEGOTIATION_TIMEOUT_MS = 45_000;
 
+const NO_ICE_ERROR =
+  "SDP answer received but no video stream. The Android app must send ICE candidates " +
+  '(onIceCandidate → { "type": "webrtc", "ice": { "candidate": "...", "sdpMid": "0", "sdpMLineIndex": 0 } }) ' +
+  "on the same WebSocket after the answer, or via POST /api/v1/signaling.";
+
+const ICE_WAIT_MS = 20_000;
+
 const NO_ANSWER_ERROR =
   "The server delivered a WebRTC offer to the device, but no SDP answer came back. " +
   "The Android app must start screen capture after START_REMOTE_ADMIN and send " +
@@ -39,6 +46,7 @@ export function useWebRtcViewer({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scheduleDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iceWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
   const [streamActive, setStreamActive] = useState(false);
@@ -66,10 +74,18 @@ export function useWebRtcViewer({
     }
   }, []);
 
+  const clearIceWait = useCallback(() => {
+    if (iceWaitRef.current) {
+      clearTimeout(iceWaitRef.current);
+      iceWaitRef.current = null;
+    }
+  }, []);
+
   const cleanup = useCallback(() => {
     clearNegotiationTimeout();
     clearScheduleDelay();
     clearOfferRetry();
+    clearIceWait();
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
     pcRef.current?.close();
@@ -79,7 +95,7 @@ export function useWebRtcViewer({
     }
     setStreamActive(false);
     setStatus("idle");
-  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry]);
+  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait]);
 
   const startSession = useCallback(async () => {
     if (receivedAnswerRef.current && pcRef.current) {
@@ -88,6 +104,7 @@ export function useWebRtcViewer({
 
     clearScheduleDelay();
     clearOfferRetry();
+    clearIceWait();
     receivedAnswerRef.current = false;
     pcRef.current?.close();
     pcRef.current = null;
@@ -116,6 +133,7 @@ export function useWebRtcViewer({
     pc.ontrack = (event) => {
       clearNegotiationTimeout();
       clearOfferRetry();
+      clearIceWait();
       if (videoRef.current && event.streams[0]) {
         videoRef.current.srcObject = event.streams[0];
         void videoRef.current.play().catch(() => undefined);
@@ -175,6 +193,14 @@ export function useWebRtcViewer({
         clearOfferRetry();
         try {
           await pc.setRemoteDescription(sdp);
+          clearIceWait();
+          iceWaitRef.current = setTimeout(() => {
+            if (pcRef.current !== pc) return;
+            if (pc.connectionState !== "connected") {
+              setError(NO_ICE_ERROR);
+              setStatus("failed");
+            }
+          }, ICE_WAIT_MS);
         } catch (err) {
           setStatus("failed");
           setError(
@@ -185,6 +211,7 @@ export function useWebRtcViewer({
       }
 
       if (ice) {
+        clearIceWait();
         try {
           await pc.addIceCandidate(ice);
         } catch (err) {
@@ -199,6 +226,7 @@ export function useWebRtcViewer({
   const scheduleOffer = useCallback(() => {
     clearScheduleDelay();
     clearOfferRetry();
+    clearIceWait();
     offerAttemptRef.current = 0;
 
     const delay = deviceStreamReady ? 0 : OFFER_DELAY_MS;
