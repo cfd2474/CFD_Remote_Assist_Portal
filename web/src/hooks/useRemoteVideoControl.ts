@@ -34,6 +34,9 @@ export function useRemoteVideoControl({
   const panelRef = useRef<HTMLDivElement>(null);
   const activePointer = useRef<ActivePointer | null>(null);
   const [locked, setLocked] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const lockedRef = useRef(false);
 
   useEffect(() => {
@@ -65,9 +68,7 @@ export function useRemoteVideoControl({
 
   const unlockPanel = useCallback(() => {
     setLocked(false);
-    if (document.pointerLockElement === panelRef.current) {
-      document.exitPointerLock();
-    }
+    setCursorPosition(null);
     panelRef.current?.blur();
   }, []);
 
@@ -76,21 +77,34 @@ export function useRemoteVideoControl({
     setLocked(true);
     requestAnimationFrame(() => {
       panelRef.current?.focus({ preventScroll: true });
-      panelRef.current?.requestPointerLock?.();
     });
   }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {
       setLocked(false);
-      if (document.pointerLockElement === panelRef.current) {
-        document.exitPointerLock();
-      }
+      setCursorPosition(null);
       return;
     }
 
     lockPanel();
   }, [enabled, lockPanel]);
+
+  const updateCursorPosition = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!lockedRef.current) return;
+
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const rect = panel.getBoundingClientRect();
+      setCursorPosition({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (!enabled || !locked) return;
@@ -158,6 +172,7 @@ export function useRemoteVideoControl({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!enabled) return;
       lockPanel();
+      updateCursorPosition(e.clientX, e.clientY);
 
       const video = videoRef.current;
       if (!video) return;
@@ -180,11 +195,13 @@ export function useRemoteVideoControl({
         threshold: moveThresholdPx(video),
       };
     },
-    [enabled, lockPanel, send, videoRef]
+    [enabled, lockPanel, send, updateCursorPosition, videoRef]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      updateCursorPosition(e.clientX, e.clientY);
+
       const pointer = activePointer.current;
       if (!pointer || pointer.id !== e.pointerId) return;
 
@@ -194,8 +211,22 @@ export function useRemoteVideoControl({
         pointer.moved = true;
       }
     },
-    []
+    [updateCursorPosition]
   );
+
+  const handlePointerEnter = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!lockedRef.current) return;
+      updateCursorPosition(e.clientX, e.clientY);
+    },
+    [updateCursorPosition]
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    if (lockedRef.current) {
+      setCursorPosition(null);
+    }
+  }, []);
 
   const endPointer = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -247,11 +278,14 @@ export function useRemoteVideoControl({
   return {
     panelRef,
     locked,
+    cursorPosition,
     unlockPanel,
     onPointerDown: handlePointerDown,
     onPointerMove: handlePointerMove,
     onPointerUp: handlePointerUp,
     onPointerCancel: handlePointerCancel,
+    onPointerEnter: handlePointerEnter,
+    onPointerLeave: handlePointerLeave,
     onContextMenu: handleContextMenu,
     onFocus: handleFocus,
   };

@@ -63,10 +63,13 @@ export function RemoteViewer({
   const {
     panelRef,
     locked,
+    cursorPosition,
     onPointerDown,
     onPointerMove,
     onPointerUp,
     onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
     onContextMenu,
     onFocus,
   } = useRemoteVideoControl({
@@ -132,6 +135,8 @@ export function RemoteViewer({
         onPointerMove={streamActive ? onPointerMove : undefined}
         onPointerUp={streamActive ? onPointerUp : undefined}
         onPointerCancel={streamActive ? onPointerCancel : undefined}
+        onPointerEnter={streamActive ? onPointerEnter : undefined}
+        onPointerLeave={streamActive ? onPointerLeave : undefined}
         onContextMenu={streamActive ? onContextMenu : undefined}
         onFocus={streamActive ? onFocus : undefined}
       >
@@ -142,6 +147,16 @@ export function RemoteViewer({
           playsInline
           muted
         />
+        {locked && cursorPosition && (
+          <div
+            className="remote-cursor-indicator"
+            style={{
+              left: `${cursorPosition.x}px`,
+              top: `${cursorPosition.y}px`,
+            }}
+            aria-hidden
+          />
+        )}
       </div>
       <p className="remote-hint">
         {streamActive ? (
