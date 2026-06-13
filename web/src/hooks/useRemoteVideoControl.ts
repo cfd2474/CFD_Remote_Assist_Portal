@@ -67,7 +67,14 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!enabled || e.button !== 0) return;
+      if (!enabled) return;
+      if (e.button === 2) {
+        e.preventDefault();
+        const point = pointPercent(e.currentTarget, e.clientX, e.clientY);
+        void send({ action: "LONG_PRESS", ...point });
+        return;
+      }
+      if (e.button !== 0) return;
       e.preventDefault();
       e.currentTarget.setPointerCapture(e.pointerId);
       activePointer.current = {
@@ -77,7 +84,7 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
         moved: false,
       };
     },
-    [enabled]
+    [enabled, send]
   );
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -132,10 +139,10 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
   );
 
   return {
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-    handlePointerCancel,
-    handleContextMenu,
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+    onPointerCancel: handlePointerCancel,
+    onContextMenu: handleContextMenu,
   };
 }

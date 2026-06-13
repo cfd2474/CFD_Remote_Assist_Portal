@@ -90,7 +90,11 @@ export function RemoteViewer({
 
       {error && status === "failed" && <p className="remote-error">{error}</p>}
 
-      <div className="remote-video-wrap">
+      <div
+        className={`remote-video-wrap${streamActive ? " remote-video-wrap--interactive" : ""}`}
+        aria-label={streamActive ? "Remote touch control" : undefined}
+        {...(streamActive ? controlHandlers : {})}
+      >
         <video
           ref={videoRef}
           className="remote-video"
@@ -98,13 +102,6 @@ export function RemoteViewer({
           playsInline
           muted
         />
-        {streamActive && (
-          <div
-            className="remote-video-input"
-            aria-label="Remote touch control"
-            {...controlHandlers}
-          />
-        )}
       </div>
       <p className="remote-hint">
         {streamActive

@@ -295,6 +295,12 @@ button:hover {
   max-width: 400px;
 }
 
+.remote-video-wrap--interactive {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
 .remote-video {
   display: block;
   width: 100%;
@@ -302,15 +308,7 @@ button:hover {
   background: #000;
   border-radius: 8px;
   object-fit: contain;
-}
-
-.remote-video-input {
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  cursor: crosshair;
-  touch-action: none;
-  user-select: none;
+  pointer-events: none;
 }
 
 .remote-hint {
