@@ -1,9 +1,10 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { requireDeviceSecret } from "../auth/device.js";
 import {
   registerDevice,
   recordTelemetry,
   recordEvent,
+  pingDevice,
 } from "../services/devices.js";
 import type { DeviceRegistration, TelemetryPayload, DeviceEventPayload } from "../types.js";
 
@@ -49,6 +50,37 @@ deviceApiRouter.post("/telemetry", requireDeviceSecret, async (req, res) => {
     res.status(500).json({ error: "Failed to record telemetry" });
   }
 });
+
+async function handlePing(req: Request, res: Response): Promise<void> {
+  const uid =
+    req.method === "GET"
+      ? (req.query.uid as string | undefined)
+      : (req.body as { uid?: string } | undefined)?.uid;
+
+  if (!uid) {
+    res.status(400).json({ error: "uid is required" });
+    return;
+  }
+
+  try {
+    const device = await pingDevice(uid);
+    if (!device) {
+      res.status(404).json({ error: "Device not recognized" });
+      return;
+    }
+    res.json({
+      ok: true,
+      uid: device.uid,
+      device_name: device.device_name,
+    });
+  } catch (err) {
+    console.error("Ping error:", err);
+    res.status(500).json({ error: "Ping failed" });
+  }
+}
+
+deviceApiRouter.get("/ping", handlePing);
+deviceApiRouter.post("/ping", handlePing);
 
 deviceApiRouter.post("/event", requireDeviceSecret, async (req, res) => {
   const body = req.body as DeviceEventPayload;

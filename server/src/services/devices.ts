@@ -143,6 +143,17 @@ export async function getDevice(uid: string): Promise<DeviceRow | null> {
   return result.rows[0] ?? null;
 }
 
+export async function pingDevice(uid: string): Promise<DeviceRow | null> {
+  const device = await getDevice(uid);
+  if (!device) return null;
+
+  await pool.query(
+    "UPDATE devices SET last_seen_at = NOW() WHERE uid = $1",
+    [uid]
+  );
+  return device;
+}
+
 export async function setDeviceOnline(uid: string, online: boolean): Promise<void> {
   await pool.query(
     "UPDATE devices SET is_online = $2, last_seen_at = NOW() WHERE uid = $1",

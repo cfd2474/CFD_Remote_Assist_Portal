@@ -42,6 +42,7 @@ Portal: `http://localhost` (or your configured host)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/api/v1/register` | None | One-time device registration |
+| GET/POST | `/api/v1/ping` | None | Verify device UID is registered (heartbeat) |
 | POST | `/api/v1/telemetry` | `X-Connection-Secret` | Location/battery pulse |
 | POST | `/api/v1/event` | `X-Connection-Secret` | e.g. `PING_ACKNOWLEDGED` |
 | WS | `/ws/device` | First message auth | Receive commands, WebRTC signaling |
