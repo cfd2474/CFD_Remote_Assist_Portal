@@ -689,7 +689,7 @@ During an active remote session, the admin may send touch packets on the device 
 
 Supported `key` values use Android `KeyEvent` names: navigation (`BACK`, `HOME`, `RECENTS`), d-pad (`DPAD_UP`, `DPAD_DOWN`, `DPAD_LEFT`, `DPAD_RIGHT`), alphanumeric (`KEYCODE_A` … `KEYCODE_Z`, `KEYCODE_0` … `KEYCODE_9`), editing keys (`KEYCODE_ENTER`, `KEYCODE_DEL`, `KEYCODE_SPACE`, `KEYCODE_TAB`), and modifier combos (`Ctrl+c`, `Shift+KEYCODE_A`, etc.). When `input_method` is `"hardware_keyboard"`, inject with `KeyEvent` using `InputDevice.SOURCE_KEYBOARD` (external keyboard), not IME text injection.
 
-When the admin portal video panel is focused, all keyboard input is forwarded as `KEY` packets until the admin presses **⌘+Esc** (Mac) or **Ctrl+Esc** (Windows/Linux).
+When a remote stream is active, keyboard input is forwarded to the device as `KEY` packets by default. Typing is **not** forwarded only when the admin has focused an editable field on the portal page (input, textarea, select, or contenteditable). Focusing the browser address bar or another application stops delivery automatically.
 
 Coordinates are **0.0–1.0** fractions of the **device screen** (not the letterboxed video element on the portal). The portal maps pointer positions through the visible video frame before sending percentages.
 

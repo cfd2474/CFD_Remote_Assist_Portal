@@ -1,16 +1,27 @@
 /** Map browser keyboard events to Android hardware keyboard KEY control packets. */
 
-export function isKeyboardExitCombo(e: KeyboardEvent): boolean {
-  return e.key === "Escape" && (e.metaKey || e.ctrlKey);
+const EDITABLE_SELECTOR =
+  "input, textarea, select, [contenteditable=''], [contenteditable='true']";
+
+function isEditableElement(element: Element | null): boolean {
+  if (!element || !(element instanceof HTMLElement)) return false;
+  if (element.isContentEditable) return true;
+
+  const tag = element.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+
+  return element.closest(EDITABLE_SELECTOR) != null;
 }
 
-export function metaKeyLabel(): string {
-  if (typeof navigator === "undefined") return "Ctrl";
-  return /Mac|iPhone|iPad/i.test(navigator.platform) ? "⌘" : "Ctrl";
-}
+/** True when keystrokes should go to the remote device (not a page text field). */
+export function shouldForwardKeyboardToDevice(activeElement: Element | null): boolean {
+  if (isEditableElement(activeElement)) return false;
 
-export function keyboardExitHint(): string {
-  return `${metaKeyLabel()}+Esc`;
+  if (!activeElement || activeElement === document.body || activeElement === document.documentElement) {
+    return true;
+  }
+
+  return true;
 }
 
 const ANDROID_KEYCODE: Record<string, string> = {
@@ -54,8 +65,6 @@ function letterKeyCode(key: string): string | null {
 }
 
 export function normalizeControlKey(e: KeyboardEvent): string | null {
-  if (isKeyboardExitCombo(e)) return null;
-
   const modifierOnly = new Set(["Control", "Shift", "Alt", "Meta"]);
   if (modifierOnly.has(e.key)) return null;
 

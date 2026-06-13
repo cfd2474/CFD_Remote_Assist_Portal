@@ -316,7 +316,7 @@ button:hover {
 }
 
 .remote-video-wrap--interactive {
-  cursor: crosshair;
+  cursor: none;
   touch-action: none;
   user-select: none;
   overscroll-behavior: none;
@@ -326,12 +326,14 @@ button:hover {
   outline: none;
 }
 
-.remote-video-wrap--locked {
-  outline: 2px solid var(--accent, #3b82f6);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #3b82f6) 25%, transparent);
-  cursor: none;
-  overscroll-behavior: none;
+.remote-keyboard-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: var(--surface-2, #2a2a2a);
+  border: 1px solid var(--border, #444);
 }
 
 .remote-cursor-indicator {
@@ -371,15 +373,6 @@ button:hover {
   width: 24px;
   height: 2px;
   margin-top: -1px;
-}
-
-.remote-lock-badge {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--accent, #3b82f6);
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent, #3b82f6) 15%, transparent);
 }
 
 .remote-hint kbd {

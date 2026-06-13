@@ -3,7 +3,6 @@ import type { User } from "oidc-client-ts";
 import { useRemoteVideoControl } from "../hooks/useRemoteVideoControl";
 import { useVideoStreamLayout } from "../hooks/useVideoStreamLayout";
 import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
-import { keyboardExitHint } from "../utils/remoteKeyboard";
 
 import type { ControlPacket } from "../types";
 import type { StreamDimensions } from "../utils/streamDimensions";
@@ -67,8 +66,8 @@ export function RemoteViewer({
 
   const {
     panelRef,
-    locked,
     cursorPosition,
+    showCursor,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -76,7 +75,6 @@ export function RemoteViewer({
     onPointerEnter,
     onPointerLeave,
     onContextMenu,
-    onFocus,
   } = useRemoteVideoControl({
     uid,
     user,
@@ -85,7 +83,6 @@ export function RemoteViewer({
     sendControlWs: adminWsConnected ? sendControl : undefined,
   });
 
-  const exitHint = keyboardExitHint();
   const { landscape, aspectRatio } = useVideoStreamLayout(
     videoRef,
     streamActive,
@@ -115,8 +112,8 @@ export function RemoteViewer({
             {landscape ? "Landscape" : "Portrait"}
           </span>
         )}
-        {streamActive && locked && (
-          <span className="remote-lock-badge">Input locked to panel</span>
+        {streamActive && (
+          <span className="remote-keyboard-badge">Keyboard → device</span>
         )}
       </div>
 
@@ -137,7 +134,6 @@ export function RemoteViewer({
 
       <div
         ref={panelRef}
-        tabIndex={streamActive ? 0 : -1}
         className={[
           "remote-video-wrap",
           streamActive ? "remote-video-wrap--interactive" : "",
@@ -146,7 +142,6 @@ export function RemoteViewer({
               ? "remote-video-wrap--landscape"
               : "remote-video-wrap--portrait"
             : "",
-          locked ? "remote-video-wrap--locked" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -161,7 +156,6 @@ export function RemoteViewer({
         onPointerEnter={streamActive ? onPointerEnter : undefined}
         onPointerLeave={streamActive ? onPointerLeave : undefined}
         onContextMenu={streamActive ? onContextMenu : undefined}
-        onFocus={streamActive ? onFocus : undefined}
       >
         <video
           ref={videoRef}
@@ -170,7 +164,7 @@ export function RemoteViewer({
           playsInline
           muted
         />
-        {locked && cursorPosition && (
+        {showCursor && cursorPosition && (
           <div
             className="remote-cursor-indicator"
             style={{
@@ -183,17 +177,11 @@ export function RemoteViewer({
       </div>
       <p className="remote-hint">
         {streamActive ? (
-          locked ? (
-            <>
-              Mouse and keyboard are locked to the video panel. Click/drag to touch; swipe up
-              from the bottom edge for the app drawer. Press <kbd>{exitHint}</kbd> to release.
-            </>
-          ) : (
-            <>
-              Click the video to lock input. Click, drag, or swipe for touch; right-click for
-              long-press. Press <kbd>{exitHint}</kbd> to release when locked.
-            </>
-          )
+          <>
+            While streaming, keyboard input is sent to the device unless you focus a text
+            field on this page. Click, drag, or swipe on the video for touch; right-click
+            for long-press.
+          </>
         ) : (
           "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer on the device WebSocket. Optionally send { \"type\": \"webrtc_ready\" } when capture has started."
         )}

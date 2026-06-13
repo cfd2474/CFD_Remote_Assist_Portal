@@ -3,8 +3,8 @@ import type { User } from "oidc-client-ts";
 import { sendControl as sendControlHttp } from "../api/client";
 import type { ControlPacket } from "../types";
 import {
-  isKeyboardExitCombo,
   normalizeControlKey,
+  shouldForwardKeyboardToDevice,
 } from "../utils/remoteKeyboard";
 import { moveThresholdPx, pointOnVideo, swipeDurationMs } from "../utils/videoCoordinates";
 
@@ -36,15 +36,10 @@ export function useRemoteVideoControl({
 }: UseRemoteVideoControlOptions) {
   const panelRef = useRef<HTMLDivElement>(null);
   const activePointer = useRef<ActivePointer | null>(null);
-  const [locked, setLocked] = useState(false);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(
     null
   );
-  const lockedRef = useRef(false);
-
-  useEffect(() => {
-    lockedRef.current = locked;
-  }, [locked]);
+  const [pointerOverPanel, setPointerOverPanel] = useState(false);
 
   const send = useCallback(
     async (packet: ControlPacket) => {
@@ -69,56 +64,11 @@ export function useRemoteVideoControl({
     [enabled, sendControlWs, uid, user]
   );
 
-  const unlockPanel = useCallback(() => {
-    setLocked(false);
-    setCursorPosition(null);
-    panelRef.current?.blur();
-  }, []);
-
-  const lockPanel = useCallback(() => {
+  useEffect(() => {
     if (!enabled) return;
-    setLocked(true);
-    requestAnimationFrame(() => {
-      panelRef.current?.focus({ preventScroll: true });
-    });
-  }, [enabled]);
-
-  useEffect(() => {
-    if (!enabled) {
-      setLocked(false);
-      setCursorPosition(null);
-      return;
-    }
-
-    lockPanel();
-  }, [enabled, lockPanel]);
-
-  const updateCursorPosition = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!lockedRef.current) return;
-
-      const panel = panelRef.current;
-      if (!panel) return;
-
-      const rect = panel.getBoundingClientRect();
-      setCursorPosition({
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      });
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (!enabled || !locked) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isKeyboardExitCombo(e)) {
-        e.preventDefault();
-        e.stopPropagation();
-        unlockPanel();
-        return;
-      }
+      if (!shouldForwardKeyboardToDevice(document.activeElement)) return;
 
       const key = normalizeControlKey(e);
       if (!key) return;
@@ -130,23 +80,7 @@ export function useRemoteVideoControl({
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [enabled, locked, send, unlockPanel]);
-
-  useEffect(() => {
-    if (!enabled || !locked) return;
-
-    const panel = panelRef.current;
-    if (!panel) return;
-
-    const keepFocus = () => {
-      if (lockedRef.current && document.activeElement !== panel) {
-        panel.focus({ preventScroll: true });
-      }
-    };
-
-    panel.addEventListener("blur", keepFocus);
-    return () => panel.removeEventListener("blur", keepFocus);
-  }, [enabled, locked]);
+  }, [enabled, send]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -163,6 +97,17 @@ export function useRemoteVideoControl({
       document.removeEventListener("wheel", blockScroll);
     };
   }, [enabled]);
+
+  const updateCursorPosition = useCallback((clientX: number, clientY: number) => {
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const rect = panel.getBoundingClientRect();
+    setCursorPosition({
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    });
+  }, []);
 
   const finishPointer = useCallback(
     (pointer: ActivePointer, clientX: number, clientY: number) => {
@@ -194,7 +139,6 @@ export function useRemoteVideoControl({
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!enabled) return;
-      lockPanel();
       updateCursorPosition(e.clientX, e.clientY);
 
       const video = videoRef.current;
@@ -221,12 +165,14 @@ export function useRemoteVideoControl({
         threshold: moveThresholdPx(video),
       };
     },
-    [enabled, lockPanel, send, updateCursorPosition, videoRef]
+    [enabled, send, updateCursorPosition, videoRef]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      updateCursorPosition(e.clientX, e.clientY);
+      if (pointerOverPanel) {
+        updateCursorPosition(e.clientX, e.clientY);
+      }
 
       const pointer = activePointer.current;
       if (!pointer || pointer.id !== e.pointerId) return;
@@ -244,21 +190,20 @@ export function useRemoteVideoControl({
         pointer.moved = true;
       }
     },
-    [updateCursorPosition]
+    [pointerOverPanel, updateCursorPosition]
   );
 
   const handlePointerEnter = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!lockedRef.current) return;
+      setPointerOverPanel(true);
       updateCursorPosition(e.clientX, e.clientY);
     },
     [updateCursorPosition]
   );
 
   const handlePointerLeave = useCallback(() => {
-    if (lockedRef.current) {
-      setCursorPosition(null);
-    }
+    setPointerOverPanel(false);
+    setCursorPosition(null);
   }, []);
 
   const endPointer = useCallback(
@@ -295,24 +240,18 @@ export function useRemoteVideoControl({
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!enabled) return;
       e.preventDefault();
-      lockPanel();
       const video = videoRef.current;
       if (!video) return;
       const point = pointOnVideo(video, e.clientX, e.clientY);
       void send({ action: "LONG_PRESS", ...point });
     },
-    [enabled, lockPanel, send, videoRef]
+    [enabled, send, videoRef]
   );
-
-  const handleFocus = useCallback(() => {
-    if (enabled) setLocked(true);
-  }, [enabled]);
 
   return {
     panelRef,
-    locked,
     cursorPosition,
-    unlockPanel,
+    showCursor: pointerOverPanel,
     onPointerDown: handlePointerDown,
     onPointerMove: handlePointerMove,
     onPointerUp: handlePointerUp,
@@ -320,6 +259,5 @@ export function useRemoteVideoControl({
     onPointerEnter: handlePointerEnter,
     onPointerLeave: handlePointerLeave,
     onContextMenu: handleContextMenu,
-    onFocus: handleFocus,
   };
 }
