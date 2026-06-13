@@ -309,6 +309,7 @@ button:hover {
   outline: 2px solid var(--accent, #3b82f6);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #3b82f6) 25%, transparent);
+  cursor: none;
 }
 
 .remote-lock-badge {

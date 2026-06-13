@@ -30,6 +30,8 @@ export interface ControlPacket {
   x2_percent?: number;
   y2_percent?: number;
   key?: string;
+  /** Hint for KEY packets: inject as hardware keyboard KeyEvent on device */
+  input_method?: "hardware_keyboard";
 }
 
 export interface SignalingTraceEntry {

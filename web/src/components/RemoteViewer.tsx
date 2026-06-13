@@ -3,10 +3,13 @@ import { useRemoteVideoControl } from "../hooks/useRemoteVideoControl";
 import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
 import { keyboardExitHint } from "../utils/remoteKeyboard";
 
+import type { ControlPacket } from "../types";
+
 interface RemoteViewerProps {
   uid: string;
   user: User;
   sendWebRtc: (msg: Record<string, unknown>) => void;
+  sendControl?: (packet: ControlPacket) => void;
   onSignaling: (handler: (msg: Record<string, unknown>) => void) => void;
   active: boolean;
   deviceOnline: boolean;
@@ -37,6 +40,7 @@ export function RemoteViewer({
   uid,
   user,
   sendWebRtc,
+  sendControl,
   onSignaling,
   active,
   deviceOnline,
@@ -69,6 +73,8 @@ export function RemoteViewer({
     uid,
     user,
     enabled: streamActive,
+    videoRef,
+    sendControlWs: adminWsConnected ? sendControl : undefined,
   });
 
   const exitHint = keyboardExitHint();
@@ -92,7 +98,7 @@ export function RemoteViewer({
           {statusLabel(status, streamActive, deviceOnline, deviceReconnecting, deviceStreamReady)}
         </span>
         {streamActive && locked && (
-          <span className="remote-lock-badge">Keyboard locked</span>
+          <span className="remote-lock-badge">Input locked to panel</span>
         )}
       </div>
 
@@ -141,13 +147,13 @@ export function RemoteViewer({
         {streamActive ? (
           locked ? (
             <>
-              Keyboard and pointer input are sent to the device. Press{" "}
-              <kbd>{exitHint}</kbd> to release keyboard control and return to the portal.
+              Mouse and keyboard are locked to the video panel. Click/drag to touch; swipe up
+              from the bottom edge for the app drawer. Press <kbd>{exitHint}</kbd> to release.
             </>
           ) : (
             <>
-              Click the video to focus and send keyboard input. Click, drag, or swipe for touch;
-              right-click for long-press. Press <kbd>{exitHint}</kbd> to release when locked.
+              Click the video to lock input. Click, drag, or swipe for touch; right-click for
+              long-press. Press <kbd>{exitHint}</kbd> to release when locked.
             </>
           )
         ) : (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { User } from "oidc-client-ts";
-import type { SignalingStatus } from "../types";
+import type { SignalingStatus, ControlPacket } from "../types";
 
 const WS_BASE = import.meta.env.VITE_WS_BASE ?? "";
 const DEVICE_OFFLINE_DEBOUNCE_MS = 6_000;
@@ -47,6 +47,12 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
   const sendWebRtc = useCallback((message: Record<string, unknown>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "webrtc", ...message }));
+    }
+  }, []);
+
+  const sendControl = useCallback((packet: ControlPacket) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "control", ...packet }));
     }
   }, []);
 
@@ -134,6 +140,7 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
     lastEvent,
     signalingStatus,
     sendWebRtc,
+    sendControl,
     setWebRtcHandler,
   };
 }

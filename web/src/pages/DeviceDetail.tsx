@@ -24,7 +24,7 @@ export function DeviceDetail() {
   const [removing, setRemoving] = useState(false);
   const initialLoadDone = useRef(false);
 
-  const { connected, deviceOnline, deviceReconnecting, lastEvent, signalingStatus, sendWebRtc, setWebRtcHandler } =
+  const { connected, deviceOnline, deviceReconnecting, lastEvent, signalingStatus, sendWebRtc, sendControl, setWebRtcHandler } =
     useAdminWebSocket(uid, auth.user ?? null);
 
   const loadDevice = useCallback(async () => {
@@ -270,6 +270,7 @@ export function DeviceDetail() {
           uid={device.uid}
           user={auth.user!}
           sendWebRtc={sendWebRtc}
+          sendControl={sendControl}
           onSignaling={setWebRtcHandler}
           active={remoteActive}
           deviceOnline={deviceOnline || deviceReconnecting}

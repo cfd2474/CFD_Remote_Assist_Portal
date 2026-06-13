@@ -546,21 +546,43 @@ During an active remote session, the admin may send touch packets on the device 
 }
 ```
 
-**Key (navigation / text):**
+**Key (hardware keyboard / navigation):**
 
 ```json
 {
   "type": "control",
   "action": "KEY",
-  "key": "BACK"
+  "key": "KEYCODE_A",
+  "input_method": "hardware_keyboard"
 }
 ```
 
-Supported `key` values include Android navigation keys (`BACK`, `HOME`, `RECENTS`), arrow keys (`DPAD_UP`, `DPAD_DOWN`, `DPAD_LEFT`, `DPAD_RIGHT`), and typed characters (`a`, `Enter`, `Space`, `Backspace`, etc.). Modifier combos are sent as `Ctrl+c`, `Shift+A`, etc.
+Supported `key` values use Android `KeyEvent` names: navigation (`BACK`, `HOME`, `RECENTS`), d-pad (`DPAD_UP`, `DPAD_DOWN`, `DPAD_LEFT`, `DPAD_RIGHT`), alphanumeric (`KEYCODE_A` … `KEYCODE_Z`, `KEYCODE_0` … `KEYCODE_9`), editing keys (`KEYCODE_ENTER`, `KEYCODE_DEL`, `KEYCODE_SPACE`, `KEYCODE_TAB`), and modifier combos (`Ctrl+c`, `Shift+KEYCODE_A`, etc.). When `input_method` is `"hardware_keyboard"`, inject with `KeyEvent` using `InputDevice.SOURCE_KEYBOARD` (external keyboard), not IME text injection.
 
 When the admin portal video panel is focused, all keyboard input is forwarded as `KEY` packets until the admin presses **⌘+Esc** (Mac) or **Ctrl+Esc** (Windows/Linux).
 
-Coordinates are **0.0–1.0** fractions of screen width/height. Inject input via accessibility service or device-owner APIs as appropriate.
+Coordinates are **0.0–1.0** fractions of the **device screen** (not the letterboxed video element on the portal). The portal maps pointer positions through the visible video frame before sending percentages.
+
+### Android injection requirements
+
+| Action | Recommended API |
+|--------|-----------------|
+| `CLICK` | `AccessibilityService.dispatchGesture()` — short stroke (~50 ms) at `(x_percent * width, y_percent * height)` |
+| `SWIPE` | `dispatchGesture()` — stroke from start to end, **duration ≥ 250 ms** (system gestures like app drawer need a deliberate swipe) |
+| `LONG_PRESS` | `dispatchGesture()` — hold stroke ~600 ms at point |
+| `KEY` + `hardware_keyboard` | `Instrumentation` or accessibility `performGlobalAction` for `BACK`/`HOME`/`RECENTS`; otherwise inject `KeyEvent` with `SOURCE_KEYBOARD` |
+
+Example swipe handler (Kotlin):
+
+```kotlin
+fun injectSwipe(x1: Float, y1: Float, x2: Float, y2: Float, durationMs: Long = 350) {
+    val path = Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
+    val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
+    dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+}
+```
+
+Convert `x_percent` / `y_percent` using the **MediaProjection capture size** (same coordinate space as the streamed screen).
 
 ---
 

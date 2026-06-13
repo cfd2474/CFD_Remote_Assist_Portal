@@ -1,4 +1,4 @@
-/** Map browser keyboard events to device KEY control packets. */
+/** Map browser keyboard events to Android hardware keyboard KEY control packets. */
 
 export function isKeyboardExitCombo(e: KeyboardEvent): boolean {
   return e.key === "Escape" && (e.metaKey || e.ctrlKey);
@@ -13,6 +13,46 @@ export function keyboardExitHint(): string {
   return `${metaKeyLabel()}+Esc`;
 }
 
+const ANDROID_KEYCODE: Record<string, string> = {
+  Backspace: "KEYCODE_DEL",
+  Delete: "KEYCODE_FORWARD_DEL",
+  Enter: "KEYCODE_ENTER",
+  Tab: "KEYCODE_TAB",
+  Escape: "KEYCODE_ESCAPE",
+  " ": "KEYCODE_SPACE",
+  ArrowUp: "DPAD_UP",
+  ArrowDown: "DPAD_DOWN",
+  ArrowLeft: "DPAD_LEFT",
+  ArrowRight: "DPAD_RIGHT",
+  Home: "HOME",
+  End: "KEYCODE_MOVE_END",
+  PageUp: "KEYCODE_PAGE_UP",
+  PageDown: "KEYCODE_PAGE_DOWN",
+  Insert: "KEYCODE_INSERT",
+  CapsLock: "KEYCODE_CAPS_LOCK",
+  ContextMenu: "RECENTS",
+  F1: "KEYCODE_F1",
+  F2: "KEYCODE_F2",
+  F3: "KEYCODE_F3",
+  F4: "KEYCODE_F4",
+  F5: "KEYCODE_F5",
+  F6: "KEYCODE_F6",
+  F7: "KEYCODE_F7",
+  F8: "KEYCODE_F8",
+  F9: "KEYCODE_F9",
+  F10: "KEYCODE_F10",
+  F11: "KEYCODE_F11",
+  F12: "KEYCODE_F12",
+};
+
+function letterKeyCode(key: string): string | null {
+  if (key.length !== 1) return null;
+  const upper = key.toUpperCase();
+  if (upper >= "A" && upper <= "Z") return `KEYCODE_${upper}`;
+  if (key >= "0" && key <= "9") return `KEYCODE_${key}`;
+  return null;
+}
+
 export function normalizeControlKey(e: KeyboardEvent): string | null {
   if (isKeyboardExitCombo(e)) return null;
 
@@ -25,25 +65,11 @@ export function normalizeControlKey(e: KeyboardEvent): string | null {
   if (e.shiftKey) parts.push("Shift");
   if (e.metaKey) parts.push("Meta");
 
-  let key = e.key;
-  switch (e.key) {
-    case " ":
-      key = "Space";
-      break;
-    case "ArrowUp":
-      key = "DPAD_UP";
-      break;
-    case "ArrowDown":
-      key = "DPAD_DOWN";
-      break;
-    case "ArrowLeft":
-      key = "DPAD_LEFT";
-      break;
-    case "ArrowRight":
-      key = "DPAD_RIGHT";
-      break;
-    default:
-      break;
+  let key = ANDROID_KEYCODE[e.key] ?? e.key;
+  if (key === e.key) {
+    const letter = letterKeyCode(e.key);
+    if (letter) key = letter;
+    else if (e.key === " ") key = "KEYCODE_SPACE";
   }
 
   if (parts.length > 0) {

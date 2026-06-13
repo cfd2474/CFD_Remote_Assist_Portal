@@ -14,6 +14,7 @@ import {
   recordUnrecognizedDeviceMessage,
   setRemoteSessionActive,
 } from "../services/signalingSession.js";
+import type { ControlPacket } from "../types.js";
 
 interface DeviceAuthMessage {
   type: "auth";
@@ -199,6 +200,17 @@ export function attachWebSocketHandlers(
 
       if (message.type === "ping") {
         ws.send(JSON.stringify({ type: "pong" }));
+        return;
+      }
+
+      if (message.type === "control" && path === "/ws/admin") {
+        const uid = hub.getClientUid(ws);
+        const action = message.action as string | undefined;
+        if (uid && action) {
+          const { type: _type, ...packet } = message;
+          hub.sendControl(uid, packet as unknown as ControlPacket);
+        }
+        return;
       }
     });
 
