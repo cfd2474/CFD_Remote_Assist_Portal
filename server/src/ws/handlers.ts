@@ -19,6 +19,30 @@ interface AdminAuthMessage {
   token: string;
 }
 
+function isWebRtcSignaling(message: Record<string, unknown>): boolean {
+  if (message.type === "webrtc") return true;
+  if (message.sdp || message.ice || message.candidate) return true;
+  const signal = message.signal as string | undefined;
+  return signal === "offer" || signal === "answer" || signal === "ice";
+}
+
+function normalizeWebRtcMessage(
+  message: Record<string, unknown>
+): Record<string, unknown> {
+  if (message.type === "webrtc") return message;
+  return { type: "webrtc", ...message };
+}
+
+function summarizeDeviceMessage(message: Record<string, unknown>): string {
+  if (message.type === "webrtc" || message.sdp || message.ice) {
+    const sdp = message.sdp as { type?: string } | undefined;
+    if (sdp?.type) return `webrtc sdp=${sdp.type}`;
+    if (message.ice || message.candidate) return "webrtc ice";
+    return "webrtc";
+  }
+  return `type=${String(message.type ?? "unknown")} keys=${Object.keys(message).join(",")}`;
+}
+
 async function verifyDevice(uid: string, secret: string): Promise<DeviceRow | null> {
   const result = await pool.query<DeviceRow>(
     "SELECT * FROM devices WHERE uid = $1 AND connection_secret = $2",
@@ -120,8 +144,12 @@ export function attachWebSocketHandlers(
 
       if (!authenticated) return;
 
-      if (message.type === "webrtc") {
-        hub.relaySignaling(ws, message);
+      if (path === "/ws/device") {
+        console.log(`Device WS message: ${summarizeDeviceMessage(message)}`);
+      }
+
+      if (isWebRtcSignaling(message)) {
+        hub.relaySignaling(ws, normalizeWebRtcMessage(message));
         return;
       }
 

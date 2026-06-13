@@ -12,6 +12,7 @@ interface WebRtcOptions {
   sendSignaling: (msg: Record<string, unknown>) => void;
   onSignaling: (handler: (msg: Record<string, unknown>) => void) => void;
   enabled: boolean;
+  signalingReady: boolean;
 }
 
 const NEGOTIATION_TIMEOUT_MS = 25_000;
@@ -20,6 +21,7 @@ export function useWebRtcViewer({
   sendSignaling,
   onSignaling,
   enabled,
+  signalingReady,
 }: WebRtcOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -145,7 +147,7 @@ export function useWebRtcViewer({
   const autoStartedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !signalingReady) {
       autoStartedRef.current = false;
       return;
     }
@@ -154,7 +156,7 @@ export function useWebRtcViewer({
       autoStartedRef.current = true;
       void startSession();
     }
-  }, [enabled, startSession]);
+  }, [enabled, signalingReady, startSession]);
 
   useEffect(() => cleanup, [cleanup]);
 

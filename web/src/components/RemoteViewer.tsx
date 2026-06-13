@@ -38,6 +38,7 @@ export function RemoteViewer({
     sendSignaling: sendWebRtc,
     onSignaling,
     enabled: active,
+    signalingReady: active && deviceOnline && adminWsConnected,
   });
 
   const handleClick = useCallback(
