@@ -6,6 +6,7 @@ Use this as the primary integration spec for app developers. Related docs:
 
 - [mdm-config.md](mdm-config.md) — EMM managed configuration keys
 - [android-webrtc-requirements.md](android-webrtc-requirements.md) — WebRTC remote assist details
+- [android-control-handler-handoff.md](android-control-handler-handoff.md) — Kotlin touch + keyboard control handler
 
 ---
 
@@ -720,6 +721,12 @@ val y = (y_percent * captureHeight).toInt()  // must use height, not width
 ```
 
 **Common bug:** using `captureWidth` for both X and Y breaks vertical swipes while horizontal swipes still appear to work.
+
+### Reference implementation (Kotlin)
+
+Copy-paste handler for touch + keyboard: **[android-control-handler-handoff.md](android-control-handler-handoff.md)**
+
+Includes `RemoteControlHandler`, `PortalKeyParser`, `KeyInjector` (UiAutomation + shell fallback), accessibility manifest, and QA checklist. Production server logs confirm `KEY` packets reach the device WebSocket — the app must inject them.
 
 ---
 

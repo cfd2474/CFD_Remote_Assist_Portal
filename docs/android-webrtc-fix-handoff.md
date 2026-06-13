@@ -398,6 +398,14 @@ Until the app implements this, rotating the EUD will not resize the admin panel.
 
 ---
 
+## Keyboard control not working on device
+
+Production server logs show KEY packets **are delivered** to the device WebSocket (e.g. `Control KEY uid=568b166b3dd461eb key=KEYCODE_T`). If typing does nothing on the phone, implement the control handler:
+
+**[android-control-handler-handoff.md](android-control-handler-handoff.md)** — full Kotlin `RemoteControlHandler`, key mapping, and injection options.
+
+---
+
 ## Acceptance checklist (app QA)
 
 Before marking remote view fixed, confirm **all** of the following on a real device against production:
