@@ -7,6 +7,8 @@ import { DeviceMap } from "../components/DeviceMap";
 import { RemoteViewer } from "../components/RemoteViewer";
 import { SignalingDiagnostics } from "../components/SignalingDiagnostics";
 import type { Device } from "../types";
+import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
+import type { StreamDimensions } from "../utils/streamDimensions";
 
 export function DeviceDetail() {
   const { uid } = useParams<{ uid: string }>();
@@ -22,6 +24,9 @@ export function DeviceDetail() {
   const [webrtcReadySessionId, setWebrtcReadySessionId] = useState(0);
   const remoteSessionIdRef = useRef(0);
   const [removing, setRemoving] = useState(false);
+  const [streamLayoutHint, setStreamLayoutHint] = useState<StreamDimensions | null>(
+    null
+  );
   const initialLoadDone = useRef(false);
 
   const { connected, deviceOnline, deviceReconnecting, lastEvent, signalingStatus, sendWebRtc, sendControl, setWebRtcHandler } =
@@ -60,7 +65,17 @@ export function DeviceDetail() {
     if (lastEvent?.event === "WEBRTC_READY") {
       setWebrtcReadySessionId(remoteSessionIdRef.current);
     }
+    if (isLayoutEvent(String(lastEvent?.event))) {
+      const dimensions = parseStreamDimensions(lastEvent?.payload);
+      if (dimensions) setStreamLayoutHint(dimensions);
+    }
   }, [lastEvent]);
+
+  useEffect(() => {
+    if (!remoteActive) {
+      setStreamLayoutHint(null);
+    }
+  }, [remoteActive]);
 
   useEffect(() => {
     void loadDevice();
@@ -278,6 +293,7 @@ export function DeviceDetail() {
           adminWsConnected={connected}
           deviceStreamReady={deviceStreamReady}
           serverAnswerReceived={signalingStatus?.answerReceived ?? false}
+          streamLayoutHint={streamLayoutHint}
         />
         <SignalingDiagnostics
           uid={device.uid}

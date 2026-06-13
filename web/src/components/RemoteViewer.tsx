@@ -6,6 +6,7 @@ import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
 import { keyboardExitHint } from "../utils/remoteKeyboard";
 
 import type { ControlPacket } from "../types";
+import type { StreamDimensions } from "../utils/streamDimensions";
 
 interface RemoteViewerProps {
   uid: string;
@@ -19,6 +20,7 @@ interface RemoteViewerProps {
   adminWsConnected: boolean;
   deviceStreamReady: boolean;
   serverAnswerReceived?: boolean;
+  streamLayoutHint?: StreamDimensions | null;
 }
 
 function statusLabel(
@@ -50,6 +52,7 @@ export function RemoteViewer({
   adminWsConnected,
   deviceStreamReady,
   serverAnswerReceived = false,
+  streamLayoutHint = null,
 }: RemoteViewerProps) {
   const { videoRef, streamActive, status, error, startSession } = useWebRtcViewer({
     sendSignaling: sendWebRtc,
@@ -83,7 +86,11 @@ export function RemoteViewer({
   });
 
   const exitHint = keyboardExitHint();
-  const { landscape, aspectRatio } = useVideoStreamLayout(videoRef, streamActive);
+  const { landscape, aspectRatio } = useVideoStreamLayout(
+    videoRef,
+    streamActive,
+    streamLayoutHint
+  );
 
   if (!active) {
     return (

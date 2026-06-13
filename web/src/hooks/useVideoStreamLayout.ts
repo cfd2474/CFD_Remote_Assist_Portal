@@ -1,19 +1,23 @@
 import { useEffect, useState, type RefObject } from "react";
+import {
+  mergeStreamDimensions,
+} from "../utils/streamDimensions";
+import type { StreamDimensions } from "../utils/streamDimensions";
 
-export interface StreamDimensions {
-  width: number;
-  height: number;
-}
+export type { StreamDimensions };
 
 export function useVideoStreamLayout(
   videoRef: RefObject<HTMLVideoElement | null>,
-  active: boolean
+  active: boolean,
+  deviceHint: StreamDimensions | null = null
 ) {
-  const [dimensions, setDimensions] = useState<StreamDimensions | null>(null);
+  const [videoDimensions, setVideoDimensions] = useState<StreamDimensions | null>(
+    null
+  );
 
   useEffect(() => {
     if (!active) {
-      setDimensions(null);
+      setVideoDimensions(null);
       return;
     }
 
@@ -22,7 +26,7 @@ export function useVideoStreamLayout(
 
     const readDimensions = () => {
       if (video.videoWidth > 0 && video.videoHeight > 0) {
-        setDimensions({
+        setVideoDimensions({
           width: video.videoWidth,
           height: video.videoHeight,
         });
@@ -39,6 +43,7 @@ export function useVideoStreamLayout(
     };
   }, [active, videoRef]);
 
+  const dimensions = mergeStreamDimensions(videoDimensions, deviceHint);
   const landscape = dimensions ? dimensions.width > dimensions.height : false;
 
   return {

@@ -305,7 +305,7 @@ Send a ping every 30–60s if no other traffic.
 |--------|---------|
 | `webrtc` | SDP answer and ICE candidates after receiving admin offer (§8) — **required for remote view** |
 | `webrtc_ready` | Optional signal that screen capture has started; portal sends offer immediately |
-| `device_event` | Push real-time events to admin portal |
+| `device_event` | Push real-time events to admin portal (`ORIENTATION_CHANGED`, `WEBRTC_READY`, etc.) |
 | `ping` | Keepalive |
 
 **Device event example:**
@@ -505,6 +505,135 @@ The portal relays messages unchanged between admin and device for the same `uid`
 
 Legacy formats (`candidate` instead of `ice`, or raw `sdp` without `type: "webrtc"`) are accepted by the server but the canonical format above is preferred.
 
+### 8.1 Screen rotation (portrait ↔ landscape)
+
+The admin portal resizes the remote-view panel from the **intrinsic size of the incoming WebRTC video track** (`videoWidth` / `videoHeight` in the browser). It also listens for optional `ORIENTATION_CHANGED` / `CAPTURE_RESIZED` device events (see below).
+
+If the device physically rotates but the portal still shows **Portrait** and the panel size does not change, the app is still sending portrait-sized frames (e.g. 540×1204) even though the UI is landscape. **The app must update screen capture dimensions when orientation changes.**
+
+#### What the portal expects
+
+| Signal | Source | Portal behavior |
+|--------|--------|-----------------|
+| Video track dimensions | WebRTC decoded frames | Primary — panel aspect ratio and Portrait/Landscape badge |
+| `ORIENTATION_CHANGED` event | Device WebSocket (optional) | Immediate layout hint until video track catches up |
+| `CAPTURE_RESIZED` event | Device WebSocket (optional) | Same as above after capture pipeline resize |
+
+Landscape is detected when **width > height** on whichever signal is current.
+
+#### Required app behavior during `START_REMOTE_ADMIN`
+
+1. **Capture at current display size** — On each orientation change, read the **current** display metrics (not cached values from session start):
+
+   ```kotlin
+   val bounds = windowManager.currentWindowMetrics.bounds
+   val captureWidth = bounds.width()
+   val captureHeight = bounds.height()
+   ```
+
+   Use the same width/height for MediaProjection VirtualDisplay, WebRTC capturer, and control-packet touch mapping.
+
+2. **Update capture on rotation** — Register for configuration/orientation changes in the foreground service that owns MediaProjection (not only the Activity):
+
+   ```kotlin
+   // Option A: WebRTC ScreenCapturerAndroid (preferred if already in use)
+   screenCapturer.changeCaptureFormat(newWidth, newHeight, fps)
+
+   // Option B: Custom VirtualDisplay
+   virtualDisplay.resize(newWidth, newHeight, displayDensity)
+   // or release and recreate VirtualDisplay + VideoSource
+   ```
+
+3. **Keep touch coordinates aligned** — Remote `control` packets use `x_percent` / `y_percent` (0.0–1.0) relative to the **current capture width/height**. After rotation, inject gestures with:
+
+   ```kotlin
+   val x = (x_percent * captureWidth).toInt()
+   val y = (y_percent * captureHeight).toInt()
+   ```
+
+   Update `captureWidth` / `captureHeight` whenever capture size changes.
+
+4. **Renegotiate WebRTC if required** — Some WebRTC builds fire `onRenegotiationNeeded` after `changeCaptureFormat` or track replacement. If so:
+
+   - Create a new SDP answer (or offer, depending on your PeerConnection setup)
+   - Send it on the device WebSocket:
+
+   ```json
+   {
+     "type": "webrtc",
+     "sdp": { "type": "answer", "sdp": "v=0\r\n..." }
+   }
+   ```
+
+   The portal accepts a new answer during an active session and applies it automatically.
+
+5. **Notify the portal (recommended)** — Send a device event **immediately** when capture size changes, before or while the video track updates:
+
+   ```json
+   {
+     "type": "device_event",
+     "uid": "568b166b3dd461eb",
+     "event": "ORIENTATION_CHANGED",
+     "payload": {
+       "width": 2340,
+       "height": 1080,
+       "orientation": "landscape"
+     }
+   }
+   ```
+
+   `orientation` is `"landscape"` when `width > height`, otherwise `"portrait"`. You may also use `CAPTURE_RESIZED` with the same `width` / `height` payload after non-orientation resolution changes.
+
+#### Implementation checklist (rotation)
+
+- [ ] Foreground remote-assist service handles `onConfigurationChanged` or `OrientationEventListener`
+- [ ] Capture width/height refreshed from `WindowManager` / `Display` on every rotation
+- [ ] `ScreenCapturer.changeCaptureFormat()` or VirtualDisplay resize/recreate called
+- [ ] Touch injection uses current capture dimensions (width for X, **height for Y**)
+- [ ] WebRTC renegotiation completed if `onRenegotiationNeeded` fires (new SDP answer sent)
+- [ ] `ORIENTATION_CHANGED` device event sent with new `width` / `height`
+- [ ] Do **not** lock the capture VirtualDisplay to portrait metrics for the whole session
+
+#### Common mistakes
+
+| Symptom | Likely cause |
+|---------|----------------|
+| Portal stays Portrait after device rotates | Capture still outputs portrait frame size; `changeCaptureFormat` not called |
+| Panel aspect wrong but badge correct | Event sent but video track not resized — complete step 2 + renegotiation |
+| Horizontal swipes work, vertical do not | Touch mapping uses `captureWidth` for Y — use `captureHeight` for Y |
+| Black flash on rotate | VirtualDisplay recreated without re-attaching to VideoSource — swap track or renegotiate |
+
+#### Minimal Kotlin sketch
+
+```kotlin
+private var captureWidth = 0
+private var captureHeight = 0
+
+private fun onDisplayRotated() {
+    val metrics = windowManager.currentWindowMetrics.bounds
+    val newW = metrics.width()
+    val newH = metrics.height()
+    if (newW == captureWidth && newH == captureHeight) return
+
+    captureWidth = newW
+    captureHeight = newH
+
+    screenCapturer.changeCaptureFormat(newW, newH, 30)
+
+    sendDeviceEvent(
+        "ORIENTATION_CHANGED",
+        mapOf(
+            "width" to newW,
+            "height" to newH,
+            "orientation" to if (newW > newH) "landscape" else "portrait"
+        )
+    )
+
+    // If peerConnection.onRenegotiationNeeded fires:
+    // createAnswer() → send webrtc SDP answer on WebSocket
+}
+```
+
 ---
 
 ## 9. Remote control (touch input)
@@ -646,6 +775,7 @@ val y = (y_percent * captureHeight).toInt()  // must use height, not width
 - [ ] On offer: `setRemoteDescription(offer)` → **`addTrack(screen)`** → `createAnswer` → send answer (do not add send track before the offer — causes post-answer renegotiation and 0×0 video on the portal)
 - [ ] Exchange ICE candidates in `webrtc` messages
 - [ ] Handle remote `control` packets during session
+- [ ] On orientation change during stream: resize capture (`changeCaptureFormat` / VirtualDisplay), update touch mapping, send `ORIENTATION_CHANGED`, renegotiate WebRTC if needed (§8.1)
 
 ---
 

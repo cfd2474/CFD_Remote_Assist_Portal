@@ -381,6 +381,23 @@ If ICE completes but video still fails behind strict NAT, TURN may be needed lat
 
 ---
 
+## Screen rotation during remote assist
+
+If the device rotates but the portal panel stays portrait-sized and the badge still says **Portrait**, the WebRTC video track is still sending portrait frame dimensions. The portal cannot infer rotation from the physical device — only from **video track size** or an optional **`ORIENTATION_CHANGED` device event**.
+
+**Full spec:** [android-app-requirements.md §8.1](android-app-requirements.md#81-screen-rotation-portrait--landscape)
+
+**Minimum fixes on the app:**
+
+1. On rotation, call `ScreenCapturer.changeCaptureFormat(newWidth, newHeight, fps)` (or recreate VirtualDisplay).
+2. Update touch-injection capture width/height (`y = y_percent * captureHeight`).
+3. Send `{ "event": "ORIENTATION_CHANGED", "payload": { "width", "height", "orientation" } }` on the device WebSocket.
+4. If WebRTC fires `onRenegotiationNeeded`, send a new SDP **answer** on the WebSocket.
+
+Until the app implements this, rotating the EUD will not resize the admin panel.
+
+---
+
 ## Acceptance checklist (app QA)
 
 Before marking remote view fixed, confirm **all** of the following on a real device against production:
