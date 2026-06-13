@@ -159,6 +159,18 @@ export function attachWebSocketHandlers(
         return;
       }
 
+      if (message.type === "webrtc_ready") {
+        const client = hub.getClientUid(ws);
+        if (client) {
+          console.log(`Device WebRTC ready: uid=${client}`);
+          hub.relayDeviceEvent(client, {
+            event: "WEBRTC_READY",
+            uid: client,
+          });
+        }
+        return;
+      }
+
       if (message.type === "ping") {
         ws.send(JSON.stringify({ type: "pong" }));
       }

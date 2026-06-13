@@ -89,6 +89,8 @@ export class ConnectionHub {
       })
     );
 
+    console.log(`Command sent via WebSocket: uid=${uid} command=${command}`);
+
     if (command === "START_REMOTE_ADMIN") {
       void setRemoteAdminActive(uid, true);
     } else if (command === "STOP_REMOTE_ADMIN") {
@@ -165,6 +167,10 @@ export class ConnectionHub {
   isDeviceOnline(uid: string): boolean {
     const ws = this.devices.get(uid);
     return !!ws && ws.readyState === WebSocket.OPEN;
+  }
+
+  getClientUid(ws: WebSocket): string | undefined {
+    return this.clients.get(ws)?.uid;
   }
 
   disconnectDevice(uid: string): void {

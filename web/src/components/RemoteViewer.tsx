@@ -11,6 +11,7 @@ interface RemoteViewerProps {
   active: boolean;
   deviceOnline: boolean;
   adminWsConnected: boolean;
+  deviceStreamReady: boolean;
 }
 
 function statusLabel(
@@ -20,7 +21,8 @@ function statusLabel(
 ): string {
   if (streamActive) return "Streaming";
   if (!deviceOnline) return "Device offline (WebSocket)";
-  if (status === "negotiating") return "Negotiating with device…";
+  if (status === "waiting") return "Waiting for device screen capture…";
+  if (status === "negotiating") return "Offer sent — waiting for SDP answer…";
   if (status === "failed") return "Stream failed";
   return "Waiting for stream";
 }
@@ -33,12 +35,14 @@ export function RemoteViewer({
   active,
   deviceOnline,
   adminWsConnected,
+  deviceStreamReady,
 }: RemoteViewerProps) {
   const { videoRef, streamActive, status, error, startSession } = useWebRtcViewer({
     sendSignaling: sendWebRtc,
     onSignaling,
     enabled: active,
     signalingReady: active && deviceOnline && adminWsConnected,
+    deviceStreamReady,
   });
 
   const handleClick = useCallback(
@@ -103,7 +107,7 @@ export function RemoteViewer({
       <p className="remote-hint">
         {streamActive
           ? "Click on the video to send touch events to the device."
-          : "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer."}
+          : "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer on the device WebSocket. Optionally send { \"type\": \"webrtc_ready\" } when capture has started."}
       </p>
     </div>
   );

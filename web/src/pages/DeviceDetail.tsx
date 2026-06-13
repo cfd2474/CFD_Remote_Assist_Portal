@@ -93,6 +93,10 @@ export function DeviceDetail() {
   if (error || !device) return <p className="error">{error ?? "Device not found"}</p>;
 
   const hasLocation = device.last_lat != null && device.last_lon != null;
+  const deviceStreamReady =
+    lastEvent?.event === "WEBRTC_READY" ||
+    lastEvent?.event === "REMOTE_SESSION_STARTED" ||
+    lastEvent?.event === "REMOTE_READY";
 
   return (
     <div className="page">
@@ -234,6 +238,7 @@ export function DeviceDetail() {
           active={remoteActive}
           deviceOnline={deviceOnline}
           adminWsConnected={connected}
+          deviceStreamReady={deviceStreamReady}
         />
       </section>
 
