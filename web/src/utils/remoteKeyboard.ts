@@ -14,13 +14,10 @@ function isEditableElement(element: Element | null): boolean {
 }
 
 /** True when keystrokes should go to the remote device (not a page text field). */
-export function shouldForwardKeyboardToDevice(activeElement: Element | null): boolean {
-  if (isEditableElement(activeElement)) return false;
+export function shouldForwardKeyboardToDevice(focusTarget: Element | null): boolean {
+  if (isEditableElement(focusTarget)) return false;
 
-  if (!activeElement || activeElement === document.body || activeElement === document.documentElement) {
-    return true;
-  }
-
+  // Leaflet and similar widgets capture arrow keys when focused — still forward to device.
   return true;
 }
 

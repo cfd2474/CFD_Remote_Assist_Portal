@@ -50,10 +50,12 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
     }
   }, []);
 
-  const sendControl = useCallback((packet: ControlPacket) => {
+  const sendControl = useCallback((packet: ControlPacket): boolean => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "control", ...packet }));
+      return true;
     }
+    return false;
   }, []);
 
   const setWebRtcHandler = useCallback(

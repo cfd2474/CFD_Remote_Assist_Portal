@@ -178,6 +178,9 @@ export class ConnectionHub {
     }
 
     ws.send(JSON.stringify({ type: "control", ...packet }));
+    if (packet.action === "KEY") {
+      console.log(`Control KEY uid=${uid} key=${packet.key ?? "?"}`);
+    }
     return true;
   }
 

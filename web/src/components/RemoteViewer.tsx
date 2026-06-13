@@ -11,7 +11,7 @@ interface RemoteViewerProps {
   uid: string;
   user: User;
   sendWebRtc: (msg: Record<string, unknown>) => void;
-  sendControl?: (packet: ControlPacket) => void;
+  sendControl?: (packet: ControlPacket) => boolean;
   onSignaling: (handler: (msg: Record<string, unknown>) => void) => void;
   active: boolean;
   deviceOnline: boolean;
@@ -78,9 +78,10 @@ export function RemoteViewer({
   } = useRemoteVideoControl({
     uid,
     user,
-    enabled: streamActive,
+    pointerEnabled: streamActive,
+    keyboardEnabled: active && adminWsConnected,
     videoRef,
-    sendControlWs: adminWsConnected ? sendControl : undefined,
+    sendControlWs: sendControl,
   });
 
   const { landscape, aspectRatio } = useVideoStreamLayout(
@@ -112,7 +113,7 @@ export function RemoteViewer({
             {landscape ? "Landscape" : "Portrait"}
           </span>
         )}
-        {streamActive && (
+        {active && adminWsConnected && (
           <span className="remote-keyboard-badge">Keyboard → device</span>
         )}
       </div>
@@ -176,11 +177,11 @@ export function RemoteViewer({
         )}
       </div>
       <p className="remote-hint">
-        {streamActive ? (
+        {active && adminWsConnected ? (
           <>
-            While streaming, keyboard input is sent to the device unless you focus a text
-            field on this page. Click, drag, or swipe on the video for touch; right-click
-            for long-press.
+            Keyboard input is sent to the device while remote assist is active (click
+            outside any text field on this page). Click, drag, or swipe on the video
+            for touch; right-click for long-press.
           </>
         ) : (
           "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer on the device WebSocket. Optionally send { \"type\": \"webrtc_ready\" } when capture has started."

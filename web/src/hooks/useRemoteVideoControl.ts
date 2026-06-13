@@ -22,15 +22,19 @@ interface ActivePointer {
 interface UseRemoteVideoControlOptions {
   uid: string;
   user: User;
-  enabled: boolean;
+  /** Enable touch/pointer gestures on the video panel */
+  pointerEnabled: boolean;
+  /** Forward keyboard events to the device */
+  keyboardEnabled: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
-  sendControlWs?: (packet: ControlPacket) => void;
+  sendControlWs?: (packet: ControlPacket) => boolean;
 }
 
 export function useRemoteVideoControl({
   uid,
   user,
-  enabled,
+  pointerEnabled,
+  keyboardEnabled,
   videoRef,
   sendControlWs,
 }: UseRemoteVideoControlOptions) {
@@ -43,17 +47,16 @@ export function useRemoteVideoControl({
 
   const send = useCallback(
     async (packet: ControlPacket) => {
-      if (!enabled) return;
+      const channelOpen = pointerEnabled || keyboardEnabled;
+      if (!channelOpen) return;
 
       const withKeyboardMeta =
         packet.action === "KEY"
           ? { ...packet, input_method: "hardware_keyboard" as const }
           : packet;
 
-      if (sendControlWs) {
-        sendControlWs(withKeyboardMeta);
-        return;
-      }
+      const wsSent = sendControlWs?.(withKeyboardMeta) ?? false;
+      if (wsSent) return;
 
       try {
         await sendControlHttp(user, uid, withKeyboardMeta);
@@ -61,14 +64,18 @@ export function useRemoteVideoControl({
         console.warn("Control send failed:", err);
       }
     },
-    [enabled, sendControlWs, uid, user]
+    [keyboardEnabled, pointerEnabled, sendControlWs, uid, user]
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!keyboardEnabled) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!shouldForwardKeyboardToDevice(document.activeElement)) return;
+      if (e.isComposing) return;
+
+      const focusTarget =
+        e.target instanceof Element ? e.target : document.activeElement;
+      if (!shouldForwardKeyboardToDevice(focusTarget)) return;
 
       const key = normalizeControlKey(e);
       if (!key) return;
@@ -78,12 +85,12 @@ export function useRemoteVideoControl({
       void send({ action: "KEY", key });
     };
 
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [enabled, send]);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [keyboardEnabled, send]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!pointerEnabled) return;
 
     const blockScroll = (e: Event) => {
       if (!activePointer.current) return;
@@ -96,7 +103,7 @@ export function useRemoteVideoControl({
       document.removeEventListener("touchmove", blockScroll);
       document.removeEventListener("wheel", blockScroll);
     };
-  }, [enabled]);
+  }, [pointerEnabled]);
 
   const updateCursorPosition = useCallback((clientX: number, clientY: number) => {
     const panel = panelRef.current;
@@ -138,7 +145,7 @@ export function useRemoteVideoControl({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!enabled) return;
+      if (!pointerEnabled) return;
       updateCursorPosition(e.clientX, e.clientY);
 
       const video = videoRef.current;
@@ -165,7 +172,7 @@ export function useRemoteVideoControl({
         threshold: moveThresholdPx(video),
       };
     },
-    [enabled, send, updateCursorPosition, videoRef]
+    [pointerEnabled, send, updateCursorPosition, videoRef]
   );
 
   const handlePointerMove = useCallback(
@@ -238,14 +245,14 @@ export function useRemoteVideoControl({
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!enabled) return;
+      if (!pointerEnabled) return;
       e.preventDefault();
       const video = videoRef.current;
       if (!video) return;
       const point = pointOnVideo(video, e.clientX, e.clientY);
       void send({ action: "LONG_PRESS", ...point });
     },
-    [enabled, send, videoRef]
+    [pointerEnabled, send, videoRef]
   );
 
   return {

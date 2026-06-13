@@ -774,7 +774,7 @@ val y = (y_percent * captureHeight).toInt()  // must use height, not width
 - [ ] PeerConnection with Google STUN
 - [ ] On offer: `setRemoteDescription(offer)` → **`addTrack(screen)`** → `createAnswer` → send answer (do not add send track before the offer — causes post-answer renegotiation and 0×0 video on the portal)
 - [ ] Exchange ICE candidates in `webrtc` messages
-- [ ] Handle remote `control` packets during session
+- [ ] Handle remote `control` packets during session (`CLICK`, `SWIPE`, `LONG_PRESS`, and **`KEY`** with `input_method: "hardware_keyboard"`)
 - [ ] On orientation change during stream: resize capture (`changeCaptureFormat` / VirtualDisplay), update touch mapping, send `ORIENTATION_CHANGED`, renegotiate WebRTC if needed (§8.1)
 
 ---
