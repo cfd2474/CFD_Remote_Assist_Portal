@@ -166,6 +166,17 @@ export async function setDeviceOnline(uid: string, online: boolean): Promise<voi
   );
 }
 
+export async function touchLastSeen(uid: string): Promise<void> {
+  await pool.query("UPDATE devices SET last_seen_at = NOW() WHERE uid = $1", [uid]);
+}
+
+/** In-memory WebSocket registry is lost on restart; clear stale flags. */
+export async function resetLiveSessionFlags(): Promise<void> {
+  await pool.query(
+    "UPDATE devices SET is_online = false, remote_admin_active = false"
+  );
+}
+
 export async function setRemoteAdminActive(
   uid: string,
   active: boolean

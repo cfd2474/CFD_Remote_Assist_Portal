@@ -5,6 +5,7 @@ import {
   recordTelemetry,
   recordEvent,
   pingDevice,
+  touchLastSeen,
 } from "../services/devices.js";
 import { drainCommands } from "../services/commands.js";
 import type { DeviceRegistration, TelemetryPayload, DeviceEventPayload } from "../types.js";
@@ -156,6 +157,7 @@ deviceApiRouter.post("/ping", handlePing);
 deviceApiRouter.get("/commands", requireDeviceSecret, async (req, res) => {
   try {
     const uid = req.device!.uid;
+    await touchLastSeen(uid);
     const commands = await drainCommands(uid);
     res.json({ commands });
   } catch (err) {

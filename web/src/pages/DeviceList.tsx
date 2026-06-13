@@ -52,7 +52,7 @@ export function DeviceList() {
               <span
                 className={`badge ${device.is_online ? "badge-online" : "badge-offline"}`}
               >
-                {device.is_online ? "Online" : "Offline"}
+                {device.is_online ? "Live" : "Offline"}
               </span>
             </div>
             <dl>

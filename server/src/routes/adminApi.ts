@@ -34,7 +34,7 @@ adminApiRouter.get("/devices", async (_req, res) => {
       last_battery: d.last_battery,
       last_is_charging: d.last_is_charging,
       last_telemetry_at: d.last_telemetry_at,
-      is_online: d.is_online || hub.isDeviceOnline(d.uid),
+      is_online: hub.isDeviceOnline(d.uid),
       remote_admin_active: d.remote_admin_active,
     }));
     res.json({ devices: sanitized });
@@ -56,7 +56,7 @@ adminApiRouter.get("/devices/:uid", async (req, res) => {
     res.json({
       device: {
         ...sanitized,
-        is_online: sanitized.is_online || hub.isDeviceOnline(sanitized.uid),
+        is_online: hub.isDeviceOnline(sanitized.uid),
       },
     });
   } catch (err) {

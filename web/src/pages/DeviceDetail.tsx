@@ -61,7 +61,7 @@ export function DeviceDetail() {
       if (command === "STOP_REMOTE_ADMIN") setRemoteActive(false);
       setActionMessage(
         result.delivery === "queued"
-          ? `Command queued: ${command} (device will receive on next check-in)`
+          ? `Command queued: ${command} — device is not on live WebSocket; it will receive this on the next poll (usually within ~30s). Remote assist requires a live WebSocket connection.`
           : `Command sent: ${command}`
       );
       void refreshDeviceMeta();
@@ -103,9 +103,9 @@ export function DeviceDetail() {
         <h1>{device.device_name}</h1>
         <div className="device-meta">
           <span
-            className={`badge ${deviceOnline || device.is_online ? "badge-online" : "badge-offline"}`}
+            className={`badge ${deviceOnline ? "badge-online" : "badge-offline"}`}
           >
-            {deviceOnline || device.is_online ? "Online" : "Offline"}
+            {deviceOnline ? "Live" : "Not connected"}
           </span>
           <span className="badge badge-neutral">
             WS {connected ? "connected" : "disconnected"}
@@ -187,6 +187,14 @@ export function DeviceDetail() {
               </dd>
             </div>
             <div>
+              <dt>Last seen</dt>
+              <dd>
+                {device.last_seen_at
+                  ? new Date(device.last_seen_at).toLocaleString()
+                  : "—"}
+              </dd>
+            </div>
+            <div>
               <dt>Last telemetry</dt>
               <dd>
                 {device.last_telemetry_at
@@ -224,7 +232,7 @@ export function DeviceDetail() {
           sendWebRtc={sendWebRtc}
           onSignaling={setWebRtcHandler}
           active={remoteActive}
-          deviceOnline={deviceOnline || device.is_online}
+          deviceOnline={deviceOnline}
           adminWsConnected={connected}
         />
       </section>

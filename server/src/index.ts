@@ -8,6 +8,7 @@ import { config } from "./config.js";
 import { deviceApiRouter } from "./routes/deviceApi.js";
 import { adminApiRouter } from "./routes/adminApi.js";
 import { attachWebSocketHandlers } from "./ws/handlers.js";
+import { resetLiveSessionFlags } from "./services/devices.js";
 
 const app = express();
 
@@ -81,6 +82,8 @@ server.on("upgrade", (req, socket, head) => {
   socket.destroy();
 });
 
-server.listen(config.port, () => {
-  console.log(`CFD Remote Assist server listening on port ${config.port}`);
+void resetLiveSessionFlags().then(() => {
+  server.listen(config.port, () => {
+    console.log(`CFD Remote Assist server listening on port ${config.port}`);
+  });
 });
