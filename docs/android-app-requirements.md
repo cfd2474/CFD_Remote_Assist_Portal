@@ -611,9 +611,9 @@ Coordinates are **0.0–1.0** fractions of screen width/height. Inject input via
 
 ### Remote assist
 
-- [ ] MediaProjection screen capture
+- [ ] MediaProjection screen capture; send `webrtc_ready` only after first captured frame
 - [ ] PeerConnection with Google STUN
-- [ ] On offer: `setRemoteDescription` → `createAnswer` → send answer
+- [ ] On offer: `setRemoteDescription(offer)` → **`addTrack(screen)`** → `createAnswer` → send answer (do not add send track before the offer — causes post-answer renegotiation and 0×0 video on the portal)
 - [ ] Exchange ICE candidates in `webrtc` messages
 - [ ] Handle remote `control` packets during session
 

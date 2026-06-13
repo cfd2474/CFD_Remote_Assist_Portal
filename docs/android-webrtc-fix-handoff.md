@@ -157,7 +157,45 @@ peerConnection.addTrack(videoTrack, listOf("stream0"))  // MUST be before create
 | MediaProjection permission granted but capturer never `startCapture()` | 0×0 video |
 | VirtualDisplay created but not wired to WebRTC surface | Black frames |
 | Separate WS reconnect tears down capturer | Brief stream then black |
+| `addTrack` before offer leaves pending renegotiation after answer | Track on admin, 0×0 / no RTP (see **Fix #1C**) |
 | VideoTrack created but not added to PeerConnection | No media |
+
+---
+
+## Required fix #1C — Post-answer `Renegotiation Needed` (CURRENT BLOCKER for 0×0)
+
+Recent logcat (14:13 UTC) shows capture is working (`FIRST FRAME CAPTURED! 540×1204`), ICE is **CONNECTED**, and the SDP answer is sent — but the app logs **`Renegotiation Needed` immediately after the answer**. The portal then receives a video track with **no RTP packets** (0×0).
+
+This happens when the screen track is added **before** the admin offer arrives. Unified Plan leaves a pending renegotiation that the answer does not fully resolve, so the negotiated sender never pumps frames to the browser.
+
+### Fix (recommended order)
+
+```kotlin
+// 1. Start capture and wait for first frame (keep this)
+capturer.startCapture(w, h, 30)
+waitForFirstFrame()
+sendWebrtcReady()
+
+// 2. When offer arrives — add track HERE, not at step 1
+peerConnection.setRemoteDescription(offer) {
+    peerConnection.addTrack(videoTrack, listOf("stream0"))  // or setDirection(SEND_ONLY) on transceiver
+    peerConnection.createAnswer { answer ->
+        peerConnection.setLocalDescription(answer)
+        sendAnswer(answer)
+        // onIceCandidate → send each candidate
+    }
+}
+```
+
+**Do not** call `addTrack` / `addTransceiver(SEND)` until **after** `setRemoteDescription(offer)`.
+
+### Verify in logcat
+
+After fix, you should **not** see `Renegotiation Needed` after sending the answer. You should see RTP stats increasing on the device sender (if logging enabled).
+
+### Alternative (if track must exist before offer)
+
+If you must create the track early for capture, **remove** it from the PeerConnection until the offer arrives, or use a **recv-only placeholder** transceiver and `replaceTrack()` after `setRemoteDescription(offer)`.
 
 ---
 

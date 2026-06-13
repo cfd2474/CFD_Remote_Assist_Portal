@@ -42,6 +42,12 @@ const NO_ICE_ERROR =
 
 const ICE_WAIT_MS = 20_000;
 const STREAM_WAIT_MS = 25_000;
+const FRAME_WAIT_MS = 30_000;
+
+const NO_RTP_ERROR =
+  "WebRTC connected but the device sent no video packets. The Android app likely fired " +
+  '"Renegotiation Needed" after the SDP answer — add the screen track after setRemoteDescription(offer), ' +
+  "then createAnswer(), or complete the pending renegotiation with a new answer.";
 
 const NO_STREAM_ERROR =
   "WebRTC connected but no video track arrived. The Android app must attach screen capture " +
@@ -69,6 +75,7 @@ export function useWebRtcViewer({
   const scheduleDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const iceWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const frameWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
   const pendingAnswerRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -116,6 +123,13 @@ export function useWebRtcViewer({
     }
   }, []);
 
+  const clearFrameWait = useCallback(() => {
+    if (frameWaitRef.current) {
+      clearTimeout(frameWaitRef.current);
+      frameWaitRef.current = null;
+    }
+  }, []);
+
   const enqueueSignaling = useCallback((fn: () => Promise<void>) => {
     signalingQueueRef.current = signalingQueueRef.current
       .then(fn)
@@ -134,15 +148,36 @@ export function useWebRtcViewer({
     }
   }, []);
 
-  const attachRemoteVideo = useCallback(
-    (pc: RTCPeerConnection, track: MediaStreamTrack) => {
-      if (!videoRef.current || track.kind !== "video") return false;
+  const requestInboundKeyFrame = useCallback(async (pc: RTCPeerConnection) => {
+    for (const receiver of pc.getReceivers()) {
+      if (receiver.track?.kind !== "video") continue;
+      const requestKeyFrame = (
+        receiver as RTCRtpReceiver & { requestKeyFrame?: () => Promise<void> }
+      ).requestKeyFrame;
+      if (requestKeyFrame) {
+        try {
+          await requestKeyFrame.call(receiver);
+        } catch (err) {
+          console.warn("requestKeyFrame failed:", err);
+        }
+      }
+    }
+  }, []);
 
-      const stream = new MediaStream([track]);
+  const getInboundVideoStats = useCallback(async (pc: RTCPeerConnection) => {
+    let bytesReceived = 0;
+    let framesDecoded = 0;
+    const stats = await pc.getStats();
+    stats.forEach((report) => {
+      if (report.type === "inbound-rtp" && report.kind === "video") {
+        bytesReceived += Number(report.bytesReceived ?? 0);
+        framesDecoded += Number(report.framesDecoded ?? 0);
+      }
+    });
+    return { bytesReceived, framesDecoded };
+  }, []);
 
-      const video = videoRef.current;
-      video.srcObject = stream;
-      void video.play().catch(() => undefined);
+  const markStreaming = useCallback(() => {
       setStreamActive(true);
       setStatus("streaming");
       setError(null);
@@ -150,21 +185,79 @@ export function useWebRtcViewer({
       clearOfferRetry();
       clearIceWait();
       clearStreamWait();
+      clearFrameWait();
+    },
+    [clearNegotiationTimeout, clearOfferRetry, clearIceWait, clearStreamWait, clearFrameWait]
+  );
 
-      window.setTimeout(() => {
-        if (pcRef.current !== pc || !videoRef.current) return;
-        if (videoRef.current.videoWidth === 0 && videoRef.current.videoHeight === 0) {
+  const scheduleFrameWait = useCallback(
+    (pc: RTCPeerConnection, video: HTMLVideoElement) => {
+      clearFrameWait();
+      frameWaitRef.current = setTimeout(() => {
+        void (async () => {
+          if (pcRef.current !== pc || !videoRef.current) return;
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            markStreaming();
+            return;
+          }
+
+          const { bytesReceived, framesDecoded } = await getInboundVideoStats(pc);
+          if (framesDecoded > 0 || (video.videoWidth > 0 && video.videoHeight > 0)) {
+            markStreaming();
+            return;
+          }
+
           setStreamActive(false);
           setStatus("failed");
           setError(
-            "WebRTC track received but no video frames (0×0). The Android app PeerConnection is up but screen capture is not feeding the video track."
+            bytesReceived === 0
+              ? NO_RTP_ERROR
+              : "WebRTC track received but no video frames (0×0). The Android app PeerConnection is up but screen capture is not feeding the video track."
           );
-        }
-      }, 12_000);
+        })();
+      }, FRAME_WAIT_MS);
+    },
+    [clearFrameWait, getInboundVideoStats, markStreaming]
+  );
 
+  const attachRemoteVideo = useCallback(
+    (pc: RTCPeerConnection, track: MediaStreamTrack) => {
+      if (!videoRef.current || track.kind !== "video") return false;
+
+      const video = videoRef.current;
+      if (video.srcObject) {
+        const existing = (video.srcObject as MediaStream).getVideoTracks()[0];
+        if (existing?.id === track.id && video.videoWidth > 0) {
+          markStreaming();
+          return true;
+        }
+      }
+
+      const stream = new MediaStream([track]);
+      video.srcObject = stream;
+      void video.play().catch(() => undefined);
+      setStatus("connecting");
+      setError(null);
+
+      const onFrameReady = () => {
+        if (pcRef.current !== pc || !videoRef.current) return;
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          markStreaming();
+        }
+      };
+
+      video.onloadedmetadata = onFrameReady;
+      video.onresize = onFrameReady;
+      track.onunmute = () => {
+        onFrameReady();
+        void requestInboundKeyFrame(pc);
+      };
+
+      void requestInboundKeyFrame(pc);
+      scheduleFrameWait(pc, video);
       return true;
     },
-    [clearNegotiationTimeout, clearOfferRetry, clearIceWait, clearStreamWait]
+    [markStreaming, requestInboundKeyFrame, scheduleFrameWait]
   );
 
   const tryAttachFromReceivers = useCallback(
@@ -205,6 +298,7 @@ export function useWebRtcViewer({
     clearOfferRetry();
     clearIceWait();
     clearStreamWait();
+    clearFrameWait();
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
     pendingAnswerRef.current = null;
@@ -218,7 +312,7 @@ export function useWebRtcViewer({
     }
     setStreamActive(false);
     setStatus("idle");
-  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait, clearStreamWait]);
+  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait, clearStreamWait, clearFrameWait]);
 
   const addRemoteIce = useCallback(
     async (ice: RTCIceCandidateInit) => {
@@ -401,6 +495,7 @@ export function useWebRtcViewer({
         clearIceWait();
         setError(null);
         tryAttachFromReceivers(pc);
+        void requestInboundKeyFrame(pc);
       }
     };
 
@@ -409,6 +504,7 @@ export function useWebRtcViewer({
         clearIceWait();
         setError(null);
         tryAttachFromReceivers(pc);
+        void requestInboundKeyFrame(pc);
       } else if (pc.connectionState === "failed") {
         clearNegotiationTimeout();
         clearOfferRetry();
@@ -422,7 +518,17 @@ export function useWebRtcViewer({
     };
 
     try {
-      pc.addTransceiver("video", { direction: "recvonly" });
+      const transceiver = pc.addTransceiver("video", { direction: "recvonly" });
+      if (typeof RTCRtpReceiver !== "undefined" && "getCapabilities" in RTCRtpReceiver) {
+        const caps = RTCRtpReceiver.getCapabilities("video");
+        const preferred = caps?.codecs.filter((codec) => {
+          const mime = codec.mimeType.toLowerCase();
+          return mime === "video/vp8" || mime === "video/vp9";
+        });
+        if (preferred?.length && "setCodecPreferences" in transceiver) {
+          transceiver.setCodecPreferences(preferred);
+        }
+      }
       const offer = await pc.createOffer();
       if (sessionGenRef.current !== gen) return;
       await pc.setLocalDescription(offer);
@@ -449,6 +555,7 @@ export function useWebRtcViewer({
     applyAnswer,
     attachRemoteVideo,
     tryAttachFromReceivers,
+    requestInboundKeyFrame,
     clearNegotiationTimeout,
     clearOfferRetry,
     clearScheduleDelay,
