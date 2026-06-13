@@ -12,6 +12,7 @@ import { attachWebSocketHandlers } from "./ws/handlers.js";
 const app = express();
 
 app.set("etag", false);
+app.set("trust proxy", 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use((_req, res, next) => {

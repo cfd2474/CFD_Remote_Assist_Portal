@@ -6,6 +6,7 @@ import {
   recordEvent,
   pingDevice,
 } from "../services/devices.js";
+import { drainCommands } from "../services/commands.js";
 import type { DeviceRegistration, TelemetryPayload, DeviceEventPayload } from "../types.js";
 
 function firstString(...values: unknown[]): string | undefined {
@@ -111,7 +112,8 @@ deviceApiRouter.post("/telemetry", requireDeviceSecret, async (req, res) => {
 
   try {
     await recordTelemetry(body);
-    res.json({ ok: true });
+    const commands = await drainCommands(body.uid);
+    res.json({ ok: true, commands });
   } catch (err) {
     console.error("Telemetry error:", err);
     res.status(500).json({ error: "Failed to record telemetry" });
@@ -150,6 +152,17 @@ async function handlePing(req: Request, res: Response): Promise<void> {
 
 deviceApiRouter.get("/ping", handlePing);
 deviceApiRouter.post("/ping", handlePing);
+
+deviceApiRouter.get("/commands", requireDeviceSecret, async (req, res) => {
+  try {
+    const uid = req.device!.uid;
+    const commands = await drainCommands(uid);
+    res.json({ commands });
+  } catch (err) {
+    console.error("Commands poll error:", err);
+    res.status(500).json({ error: "Failed to fetch commands" });
+  }
+});
 
 deviceApiRouter.post("/event", requireDeviceSecret, async (req, res) => {
   const body = req.body as DeviceEventPayload;

@@ -41,6 +41,16 @@ CREATE TABLE IF NOT EXISTS telemetry_history (
 
 CREATE INDEX IF NOT EXISTS idx_telemetry_uid_recorded ON telemetry_history(uid, recorded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_device_events_uid ON device_events(uid, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS pending_commands (
+  id BIGSERIAL PRIMARY KEY,
+  uid TEXT NOT NULL REFERENCES devices(uid) ON DELETE CASCADE,
+  command TEXT NOT NULL,
+  connection_secret TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pending_commands_uid ON pending_commands(uid, created_at ASC);
 `;
 
 async function migrate() {

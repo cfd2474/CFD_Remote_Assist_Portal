@@ -48,11 +48,16 @@ export async function sendCommand(
   user: User,
   uid: string,
   command: DeviceCommand
-): Promise<void> {
-  await apiFetch(`/api/admin/devices/${uid}/command`, user, {
-    method: "POST",
-    body: JSON.stringify({ command }),
-  });
+): Promise<{ delivery: "websocket" | "queued" }> {
+  const data = await apiFetch<{ delivery: "websocket" | "queued" }>(
+    `/api/admin/devices/${uid}/command`,
+    user,
+    {
+      method: "POST",
+      body: JSON.stringify({ command }),
+    }
+  );
+  return { delivery: data.delivery };
 }
 
 export async function sendControl(

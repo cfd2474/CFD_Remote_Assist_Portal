@@ -4,6 +4,7 @@ import { pool } from "../db/pool.js";
 import type { DeviceRow } from "../types.js";
 import { hub } from "./hub.js";
 import { config } from "../config.js";
+import { drainCommands } from "../services/commands.js";
 
 interface DeviceAuthMessage {
   type: "auth";
@@ -75,10 +76,19 @@ export function attachWebSocketHandlers(
             return;
           }
 
+          console.log(`Device WebSocket connected: uid=${auth.uid} ip=${req.socket.remoteAddress}`);
           authenticated = true;
           clearTimeout(authTimeout);
           hub.registerDevice(ws, auth.uid);
           ws.send(JSON.stringify({ type: "auth_ok", uid: auth.uid }));
+
+          const pending = await drainCommands(auth.uid);
+          for (const command of pending) {
+            ws.send(JSON.stringify(command));
+          }
+          if (pending.length > 0) {
+            console.log(`WebSocket delivered ${pending.length} queued command(s) to uid=${auth.uid}`);
+          }
           return;
         }
 

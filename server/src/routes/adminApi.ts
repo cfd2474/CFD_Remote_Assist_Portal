@@ -8,6 +8,7 @@ import {
   deleteDevice,
 } from "../services/devices.js";
 import { hub } from "../ws/hub.js";
+import { queueCommand } from "../services/commands.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
 export const adminApiRouter = Router();
@@ -111,14 +112,17 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
     );
 
     if (!sent) {
-      res.status(409).json({
-        error: "Device is not connected via WebSocket",
-        hint: "Ensure the Android app maintains a persistent WebSocket to /ws/device",
+      await queueCommand(req.params.uid, command, device.connection_secret);
+      res.json({
+        ok: true,
+        command,
+        delivery: "queued",
+        hint: "Device is not on WebSocket. Command queued for next telemetry or poll.",
       });
       return;
     }
 
-    res.json({ ok: true, command });
+    res.json({ ok: true, command, delivery: "websocket" });
   } catch (err) {
     console.error("Command error:", err);
     res.status(500).json({ error: "Failed to send command" });

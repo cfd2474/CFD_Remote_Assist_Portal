@@ -46,10 +46,14 @@ export function DeviceDetail() {
     if (!auth.user || !uid) return;
     setActionMessage(null);
     try {
-      await sendCommand(auth.user, uid, command);
+      const result = await sendCommand(auth.user, uid, command);
       if (command === "START_REMOTE_ADMIN") setRemoteActive(true);
       if (command === "STOP_REMOTE_ADMIN") setRemoteActive(false);
-      setActionMessage(`Command sent: ${command}`);
+      setActionMessage(
+        result.delivery === "queued"
+          ? `Command queued: ${command} (device will receive on next check-in)`
+          : `Command sent: ${command}`
+      );
       void loadDevice();
     } catch (err) {
       setActionMessage(err instanceof Error ? err.message : "Command failed");

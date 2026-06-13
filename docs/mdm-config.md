@@ -38,6 +38,7 @@ Android devices use the **same hostname** as the admin portal — standard HTTPS
 | Telemetry | `POST https://remote.tak-solutions.com/api/v1/telemetry` |
 | Events | `POST https://remote.tak-solutions.com/api/v1/event` |
 | Health | `GET https://remote.tak-solutions.com/health` |
+| Commands poll | `GET https://remote.tak-solutions.com/api/v1/commands` |
 | WebSocket | `wss://remote.tak-solutions.com/ws/device` |
 
 Set MDM `tracking_server_url` to `https://remote.tak-solutions.com`.
@@ -63,6 +64,8 @@ Registration response includes `connection_secret` — store it in MDM managed c
 ## WebSocket endpoint
 
 Devices connect to: `wss://remote.tak-solutions.com/ws/device`
+
+**Required for instant admin commands** (ping, locate, remote assist). Without WebSocket, commands are queued and delivered on the next telemetry POST or `GET /api/v1/commands` poll.
 
 Auth message (first frame):
 
