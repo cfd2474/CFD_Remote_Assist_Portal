@@ -292,7 +292,27 @@ button:hover {
 .remote-video-wrap {
   position: relative;
   width: 100%;
+  transition: max-width 0.25s ease, max-height 0.25s ease;
+}
+
+.remote-video-wrap--portrait {
   max-width: 400px;
+  max-height: min(80vh, 820px);
+}
+
+.remote-video-wrap--landscape {
+  max-width: min(920px, 94vw);
+  max-height: min(52vh, 480px);
+}
+
+.remote-orientation-badge {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: var(--surface-2, #2a2a2a);
+  border: 1px solid var(--border, #444);
 }
 
 .remote-video-wrap--interactive {
@@ -375,7 +395,7 @@ button:hover {
 .remote-video {
   display: block;
   width: 100%;
-  max-height: min(80vh, 900px);
+  height: 100%;
   background: #000;
   border-radius: 8px;
   object-fit: contain;

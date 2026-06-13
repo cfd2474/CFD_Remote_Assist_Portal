@@ -1,5 +1,7 @@
+import type { CSSProperties } from "react";
 import type { User } from "oidc-client-ts";
 import { useRemoteVideoControl } from "../hooks/useRemoteVideoControl";
+import { useVideoStreamLayout } from "../hooks/useVideoStreamLayout";
 import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
 import { keyboardExitHint } from "../utils/remoteKeyboard";
 
@@ -81,6 +83,7 @@ export function RemoteViewer({
   });
 
   const exitHint = keyboardExitHint();
+  const { landscape, aspectRatio } = useVideoStreamLayout(videoRef, streamActive);
 
   if (!active) {
     return (
@@ -100,6 +103,11 @@ export function RemoteViewer({
         <span className={streamActive ? "status-ok" : "status-warn"}>
           {statusLabel(status, streamActive, deviceOnline, deviceReconnecting, deviceStreamReady)}
         </span>
+        {streamActive && (
+          <span className="remote-orientation-badge">
+            {landscape ? "Landscape" : "Portrait"}
+          </span>
+        )}
         {streamActive && locked && (
           <span className="remote-lock-badge">Input locked to panel</span>
         )}
@@ -126,10 +134,18 @@ export function RemoteViewer({
         className={[
           "remote-video-wrap",
           streamActive ? "remote-video-wrap--interactive" : "",
+          streamActive
+            ? landscape
+              ? "remote-video-wrap--landscape"
+              : "remote-video-wrap--portrait"
+            : "",
           locked ? "remote-video-wrap--locked" : "",
         ]
           .filter(Boolean)
           .join(" ")}
+        style={
+          aspectRatio ? ({ aspectRatio } as CSSProperties) : undefined
+        }
         aria-label={streamActive ? "Remote device control panel" : undefined}
         onPointerDown={streamActive ? onPointerDown : undefined}
         onPointerMove={streamActive ? onPointerMove : undefined}
