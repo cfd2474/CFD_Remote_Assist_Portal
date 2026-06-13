@@ -105,6 +105,13 @@ export function normalizeSignaling(
 }
 
 export function describeSignaling(message: Record<string, unknown>): string {
+  if (message.type === "webrtc_ready") return "webrtc_ready";
+  if (message.type === "ping") return "ping";
+  if (message.type === "pong") return "pong";
+  if (message.type === "device_event" || (message.event && message.uid)) {
+    return `device_event event=${String(message.event ?? "?")}`;
+  }
+
   const normalized = normalizeSignaling(message);
   if (!normalized) {
     return `unrecognized keys=${Object.keys(message).join(",")}`;

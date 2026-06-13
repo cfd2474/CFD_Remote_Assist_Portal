@@ -38,6 +38,7 @@ export function useWebRtcViewer({
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scheduleDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
   const [streamActive, setStreamActive] = useState(false);
@@ -51,6 +52,13 @@ export function useWebRtcViewer({
     }
   }, []);
 
+  const clearScheduleDelay = useCallback(() => {
+    if (scheduleDelayRef.current) {
+      clearTimeout(scheduleDelayRef.current);
+      scheduleDelayRef.current = null;
+    }
+  }, []);
+
   const clearOfferRetry = useCallback(() => {
     if (retryRef.current) {
       clearInterval(retryRef.current);
@@ -60,6 +68,7 @@ export function useWebRtcViewer({
 
   const cleanup = useCallback(() => {
     clearNegotiationTimeout();
+    clearScheduleDelay();
     clearOfferRetry();
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
@@ -70,11 +79,22 @@ export function useWebRtcViewer({
     }
     setStreamActive(false);
     setStatus("idle");
-  }, [clearNegotiationTimeout, clearOfferRetry]);
+  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry]);
 
   const startSession = useCallback(async () => {
-    cleanup();
+    if (receivedAnswerRef.current && pcRef.current) {
+      return;
+    }
+
+    clearScheduleDelay();
+    clearOfferRetry();
     receivedAnswerRef.current = false;
+    pcRef.current?.close();
+    pcRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setStreamActive(false);
     setError(null);
     setStatus("negotiating");
     offerAttemptRef.current += 1;
@@ -151,6 +171,8 @@ export function useWebRtcViewer({
 
       if (sdp && isAnswer(sdp)) {
         receivedAnswerRef.current = true;
+        clearScheduleDelay();
+        clearOfferRetry();
         try {
           await pc.setRemoteDescription(sdp);
         } catch (err) {
@@ -175,13 +197,16 @@ export function useWebRtcViewer({
   }, [enabled, cleanup, onSignaling]);
 
   const scheduleOffer = useCallback(() => {
+    clearScheduleDelay();
     clearOfferRetry();
     offerAttemptRef.current = 0;
 
     const delay = deviceStreamReady ? 0 : OFFER_DELAY_MS;
     setStatus("waiting");
 
-    const delayTimer = setTimeout(() => {
+    scheduleDelayRef.current = setTimeout(() => {
+      scheduleDelayRef.current = null;
+      if (receivedAnswerRef.current) return;
       void startSession();
 
       retryRef.current = setInterval(() => {
@@ -196,29 +221,36 @@ export function useWebRtcViewer({
         void startSession();
       }, OFFER_RETRY_MS);
     }, delay);
-
-    return () => clearTimeout(delayTimer);
-  }, [deviceStreamReady, startSession, clearOfferRetry]);
+  }, [deviceStreamReady, startSession, clearOfferRetry, clearScheduleDelay]);
 
   const autoStartedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled || !signalingReady) {
+    if (!enabled) {
+      cleanup();
       autoStartedRef.current = false;
       return;
     }
 
-    if (!autoStartedRef.current) {
-      autoStartedRef.current = true;
-      return scheduleOffer();
+    if (!signalingReady) {
+      // Ignore brief device WebSocket reconnects during an active negotiation.
+      if (receivedAnswerRef.current || streamActive) return;
+      autoStartedRef.current = false;
+      return;
     }
-  }, [enabled, signalingReady, scheduleOffer]);
+
+    if (!autoStartedRef.current && !receivedAnswerRef.current) {
+      autoStartedRef.current = true;
+      scheduleOffer();
+    }
+  }, [enabled, signalingReady, scheduleOffer, cleanup, streamActive]);
 
   useEffect(() => {
     if (!enabled || !signalingReady || !deviceStreamReady || streamActive) return;
     if (receivedAnswerRef.current) return;
+    clearScheduleDelay();
     void startSession();
-  }, [deviceStreamReady, enabled, signalingReady, startSession, streamActive]);
+  }, [deviceStreamReady, enabled, signalingReady, startSession, streamActive, clearScheduleDelay]);
 
   useEffect(() => cleanup, [cleanup]);
 

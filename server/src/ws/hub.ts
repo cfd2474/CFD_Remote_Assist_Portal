@@ -40,7 +40,10 @@ export class ConnectionHub {
 
   registerDevice(ws: WebSocket, uid: string): void {
     const existing = this.devices.get(uid);
-    if (existing && existing !== ws) {
+    const replacing = existing && existing !== ws;
+
+    if (replacing) {
+      console.log(`Device WebSocket replaced: uid=${uid} (keeping remote session)`);
       existing.close(4000, "Replaced by new connection");
     }
 

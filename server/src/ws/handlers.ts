@@ -55,6 +55,11 @@ async function verifyAdminToken(token: string): Promise<boolean> {
   }
 }
 
+function isDeviceEvent(message: Record<string, unknown>): boolean {
+  if (message.type === "device_event") return true;
+  return typeof message.event === "string" && typeof message.uid === "string";
+}
+
 export function attachWebSocketHandlers(
   wss: WebSocketServer,
   path: "/ws/device" | "/ws/admin"
@@ -143,12 +148,22 @@ export function attachWebSocketHandlers(
         const summary = describeSignaling(message);
         console.log(`Device WS message: ${summary}`);
 
-        if (!isSignalingMessage(message) && message.type !== "device_event" && message.type !== "webrtc_ready" && message.type !== "ping") {
+        if (
+          !isSignalingMessage(message) &&
+          !isDeviceEvent(message) &&
+          message.type !== "webrtc_ready" &&
+          message.type !== "ping"
+        ) {
           if (uid) {
-            recordUnrecognizedDeviceMessage(uid, previewMessage(message));
+            recordUnrecognizedDeviceMessage(
+              uid,
+              `type=${String(message.type ?? "?")} ${previewMessage(message)}`
+            );
             hub.sendSignalingStatus(uid);
           }
-          console.log(`Device WS unrecognized: ${previewMessage(message)}`);
+          console.log(
+            `Device WS unrecognized: type=${String(message.type ?? "?")} ${previewMessage(message)}`
+          );
         }
       }
 
@@ -157,9 +172,15 @@ export function attachWebSocketHandlers(
         return;
       }
 
-      if (message.type === "device_event") {
-        const clientUid = (message.uid as string) ?? hub.getClientUid(ws) ?? "";
-        hub.relayDeviceEvent(clientUid, message);
+      if (isDeviceEvent(message)) {
+        const clientUid =
+          (message.uid as string) ?? hub.getClientUid(ws) ?? "";
+        hub.relayDeviceEvent(clientUid, {
+          type: "device_event",
+          uid: clientUid,
+          event: message.event,
+          payload: message.payload,
+        });
         return;
       }
 
