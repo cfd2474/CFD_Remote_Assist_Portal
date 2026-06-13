@@ -1,7 +1,11 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "oidc-client-ts";
 import { sendControl } from "../api/client";
 import type { ControlPacket } from "../types";
+import {
+  isKeyboardExitCombo,
+  normalizeControlKey,
+} from "../utils/remoteKeyboard";
 
 const MOVE_THRESHOLD_PX = 8;
 
@@ -31,7 +35,9 @@ interface UseRemoteVideoControlOptions {
 }
 
 export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoControlOptions) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const activePointer = useRef<ActivePointer | null>(null);
+  const [locked, setLocked] = useState(false);
 
   const send = useCallback(
     async (packet: ControlPacket) => {
@@ -44,6 +50,46 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
     },
     [enabled, uid, user]
   );
+
+  const lockPanel = useCallback(() => {
+    if (!enabled) return;
+    setLocked(true);
+    requestAnimationFrame(() => panelRef.current?.focus({ preventScroll: true }));
+  }, [enabled]);
+
+  const unlockPanel = useCallback(() => {
+    setLocked(false);
+    panelRef.current?.blur();
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) {
+      setLocked(false);
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled || !locked) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isKeyboardExitCombo(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        unlockPanel();
+        return;
+      }
+
+      const key = normalizeControlKey(e);
+      if (!key) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      void send({ action: "KEY", key });
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [enabled, locked, send, unlockPanel]);
 
   const finishPointer = useCallback(
     (el: HTMLElement, pointer: ActivePointer, clientX: number, clientY: number) => {
@@ -68,6 +114,8 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!enabled) return;
+      lockPanel();
+
       if (e.button === 2) {
         e.preventDefault();
         const point = pointPercent(e.currentTarget, e.clientX, e.clientY);
@@ -84,7 +132,7 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
         moved: false,
       };
     },
-    [enabled, send]
+    [enabled, lockPanel, send]
   );
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -132,17 +180,25 @@ export function useRemoteVideoControl({ uid, user, enabled }: UseRemoteVideoCont
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!enabled) return;
       e.preventDefault();
+      lockPanel();
       const point = pointPercent(e.currentTarget, e.clientX, e.clientY);
       void send({ action: "LONG_PRESS", ...point });
     },
-    [enabled, send]
+    [enabled, lockPanel, send]
   );
 
+  const handleFocus = useCallback(() => {
+    if (enabled) setLocked(true);
+  }, [enabled]);
+
   return {
+    panelRef,
+    locked,
     onPointerDown: handlePointerDown,
     onPointerMove: handlePointerMove,
     onPointerUp: handlePointerUp,
     onPointerCancel: handlePointerCancel,
     onContextMenu: handleContextMenu,
+    onFocus: handleFocus,
   };
 }

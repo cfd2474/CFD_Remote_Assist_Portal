@@ -301,6 +301,35 @@ button:hover {
   user-select: none;
 }
 
+.remote-video-wrap--interactive:focus {
+  outline: none;
+}
+
+.remote-video-wrap--locked {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #3b82f6) 25%, transparent);
+}
+
+.remote-lock-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent, #3b82f6);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent, #3b82f6) 15%, transparent);
+}
+
+.remote-hint kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  border: 1px solid var(--border, #444);
+  border-radius: 4px;
+  background: var(--surface-2, #2a2a2a);
+}
+
 .remote-video {
   display: block;
   width: 100%;

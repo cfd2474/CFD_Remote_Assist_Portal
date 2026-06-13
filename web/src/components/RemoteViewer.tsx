@@ -1,6 +1,7 @@
 import type { User } from "oidc-client-ts";
 import { useRemoteVideoControl } from "../hooks/useRemoteVideoControl";
 import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
+import { keyboardExitHint } from "../utils/remoteKeyboard";
 
 interface RemoteViewerProps {
   uid: string;
@@ -49,11 +50,22 @@ export function RemoteViewer({
     deviceStreamReady,
   });
 
-  const controlHandlers = useRemoteVideoControl({
+  const {
+    panelRef,
+    locked,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onContextMenu,
+    onFocus,
+  } = useRemoteVideoControl({
     uid,
     user,
     enabled: streamActive,
   });
+
+  const exitHint = keyboardExitHint();
 
   if (!active) {
     return (
@@ -73,6 +85,9 @@ export function RemoteViewer({
         <span className={streamActive ? "status-ok" : "status-warn"}>
           {statusLabel(status, streamActive, deviceOnline, deviceReconnecting, deviceStreamReady)}
         </span>
+        {streamActive && locked && (
+          <span className="remote-lock-badge">Keyboard locked</span>
+        )}
       </div>
 
       {!adminWsConnected && (
@@ -91,9 +106,22 @@ export function RemoteViewer({
       {error && status === "failed" && <p className="remote-error">{error}</p>}
 
       <div
-        className={`remote-video-wrap${streamActive ? " remote-video-wrap--interactive" : ""}`}
-        aria-label={streamActive ? "Remote touch control" : undefined}
-        {...(streamActive ? controlHandlers : {})}
+        ref={panelRef}
+        tabIndex={streamActive ? 0 : -1}
+        className={[
+          "remote-video-wrap",
+          streamActive ? "remote-video-wrap--interactive" : "",
+          locked ? "remote-video-wrap--locked" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-label={streamActive ? "Remote device control panel" : undefined}
+        onPointerDown={streamActive ? onPointerDown : undefined}
+        onPointerMove={streamActive ? onPointerMove : undefined}
+        onPointerUp={streamActive ? onPointerUp : undefined}
+        onPointerCancel={streamActive ? onPointerCancel : undefined}
+        onContextMenu={streamActive ? onContextMenu : undefined}
+        onFocus={streamActive ? onFocus : undefined}
       >
         <video
           ref={videoRef}
@@ -104,9 +132,21 @@ export function RemoteViewer({
         />
       </div>
       <p className="remote-hint">
-        {streamActive
-          ? "Click, drag, or swipe on the video to control the device. Right-click for long-press."
-          : "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer on the device WebSocket. Optionally send { \"type\": \"webrtc_ready\" } when capture has started."}
+        {streamActive ? (
+          locked ? (
+            <>
+              Keyboard and pointer input are sent to the device. Press{" "}
+              <kbd>{exitHint}</kbd> to release keyboard control and return to the portal.
+            </>
+          ) : (
+            <>
+              Click the video to focus and send keyboard input. Click, drag, or swipe for touch;
+              right-click for long-press. Press <kbd>{exitHint}</kbd> to release when locked.
+            </>
+          )
+        ) : (
+          "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer on the device WebSocket. Optionally send { \"type\": \"webrtc_ready\" } when capture has started."
+        )}
       </p>
     </div>
   );

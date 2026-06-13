@@ -546,7 +546,7 @@ During an active remote session, the admin may send touch packets on the device 
 }
 ```
 
-**Key:**
+**Key (navigation / text):**
 
 ```json
 {
@@ -555,6 +555,10 @@ During an active remote session, the admin may send touch packets on the device 
   "key": "BACK"
 }
 ```
+
+Supported `key` values include Android navigation keys (`BACK`, `HOME`, `RECENTS`), arrow keys (`DPAD_UP`, `DPAD_DOWN`, `DPAD_LEFT`, `DPAD_RIGHT`), and typed characters (`a`, `Enter`, `Space`, `Backspace`, etc.). Modifier combos are sent as `Ctrl+c`, `Shift+A`, etc.
+
+When the admin portal video panel is focused, all keyboard input is forwarded as `KEY` packets until the admin presses **⌘+Esc** (Mac) or **Ctrl+Esc** (Windows/Linux).
 
 Coordinates are **0.0–1.0** fractions of screen width/height. Inject input via accessibility service or device-owner APIs as appropriate.
 
