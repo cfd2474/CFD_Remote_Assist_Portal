@@ -531,7 +531,8 @@ During an active remote session, the admin may send touch packets on the device 
   "x_percent": 0.10,
   "y_percent": 0.50,
   "x2_percent": 0.90,
-  "y2_percent": 0.50
+  "y2_percent": 0.50,
+  "duration_ms": 350
 }
 ```
 
@@ -568,7 +569,7 @@ Coordinates are **0.0–1.0** fractions of the **device screen** (not the letter
 | Action | Recommended API |
 |--------|-----------------|
 | `CLICK` | `AccessibilityService.dispatchGesture()` — short stroke (~50 ms) at `(x_percent * width, y_percent * height)` |
-| `SWIPE` | `dispatchGesture()` — stroke from start to end, **duration ≥ 250 ms** (system gestures like app drawer need a deliberate swipe) |
+| `SWIPE` | `dispatchGesture()` — stroke from start to end; honor optional `duration_ms` (portal sends **250–900 ms**, default **350 ms**). Vertical system gestures (app drawer, notifications) require **both** correct Y coordinates and adequate duration. |
 | `LONG_PRESS` | `dispatchGesture()` — hold stroke ~600 ms at point |
 | `KEY` + `hardware_keyboard` | `Instrumentation` or accessibility `performGlobalAction` for `BACK`/`HOME`/`RECENTS`; otherwise inject `KeyEvent` with `SOURCE_KEYBOARD` |
 
@@ -582,7 +583,14 @@ fun injectSwipe(x1: Float, y1: Float, x2: Float, y2: Float, durationMs: Long = 3
 }
 ```
 
-Convert `x_percent` / `y_percent` using the **MediaProjection capture size** (same coordinate space as the streamed screen).
+Convert `x_percent` / `y_percent` using the **MediaProjection capture size** (same coordinate space as the streamed screen):
+
+```kotlin
+val x = (x_percent * captureWidth).toInt()
+val y = (y_percent * captureHeight).toInt()  // must use height, not width
+```
+
+**Common bug:** using `captureWidth` for both X and Y breaks vertical swipes while horizontal swipes still appear to work.
 
 ---
 

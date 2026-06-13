@@ -29,6 +29,8 @@ export interface ControlPacket {
   y_percent?: number;
   x2_percent?: number;
   y2_percent?: number;
+  /** Suggested gesture duration for device injection (ms). */
+  duration_ms?: number;
   key?: string;
   /** Hint for KEY packets: inject as hardware keyboard KeyEvent on device */
   input_method?: "hardware_keyboard";

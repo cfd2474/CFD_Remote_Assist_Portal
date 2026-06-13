@@ -299,6 +299,7 @@ button:hover {
   cursor: crosshair;
   touch-action: none;
   user-select: none;
+  overscroll-behavior: none;
 }
 
 .remote-video-wrap--interactive:focus {
@@ -310,6 +311,7 @@ button:hover {
   outline-offset: 2px;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #3b82f6) 25%, transparent);
   cursor: none;
+  overscroll-behavior: none;
 }
 
 .remote-cursor-indicator {
@@ -373,7 +375,7 @@ button:hover {
 .remote-video {
   display: block;
   width: 100%;
-  aspect-ratio: 9 / 16;
+  max-height: min(80vh, 900px);
   background: #000;
   border-radius: 8px;
   object-fit: contain;

@@ -63,5 +63,19 @@ export function pointOnVideo(
 export function moveThresholdPx(video: HTMLVideoElement): number {
   const frame = videoRenderRect(video);
   const minDim = Math.min(frame.width, frame.height);
-  return Math.max(6, minDim * 0.02);
+  return Math.max(4, minDim * 0.015);
+}
+
+/** Suggested inject duration from swipe length (longer swipes need more time on Android). */
+export function swipeDurationMs(
+  start: VideoPoint,
+  end: VideoPoint,
+  elapsedMs: number
+): number {
+  const distance = Math.hypot(
+    end.x_percent - start.x_percent,
+    end.y_percent - start.y_percent
+  );
+  const distanceMs = Math.round(250 + distance * 900);
+  return Math.min(900, Math.max(250, Math.max(elapsedMs, distanceMs)));
 }

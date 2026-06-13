@@ -6,12 +6,15 @@ import {
   isKeyboardExitCombo,
   normalizeControlKey,
 } from "../utils/remoteKeyboard";
-import { moveThresholdPx, pointOnVideo } from "../utils/videoCoordinates";
+import { moveThresholdPx, pointOnVideo, swipeDurationMs } from "../utils/videoCoordinates";
 
 interface ActivePointer {
   id: number;
   startX: number;
   startY: number;
+  lastX: number;
+  lastY: number;
+  startedAt: number;
   moved: boolean;
   threshold: number;
 }
@@ -145,13 +148,45 @@ export function useRemoteVideoControl({
     return () => panel.removeEventListener("blur", keepFocus);
   }, [enabled, locked]);
 
+  useEffect(() => {
+    if (!enabled || !locked) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [enabled, locked]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const blockScroll = (e: Event) => {
+      if (!activePointer.current) return;
+      e.preventDefault();
+    };
+
+    document.addEventListener("touchmove", blockScroll, { passive: false });
+    document.addEventListener("wheel", blockScroll, { passive: false });
+    document.addEventListener("pointermove", blockScroll, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", blockScroll);
+      document.removeEventListener("wheel", blockScroll);
+      document.removeEventListener("pointermove", blockScroll);
+    };
+  }, [enabled]);
+
   const finishPointer = useCallback(
     (pointer: ActivePointer, clientX: number, clientY: number) => {
       const video = videoRef.current;
       if (!video) return;
 
+      const endX = pointer.lastX ?? clientX;
+      const endY = pointer.lastY ?? clientY;
+
       const start = pointOnVideo(video, pointer.startX, pointer.startY);
-      const end = pointOnVideo(video, clientX, clientY);
+      const end = pointOnVideo(video, endX, endY);
 
       if (!pointer.moved) {
         void send({ action: "CLICK", ...start });
@@ -163,6 +198,7 @@ export function useRemoteVideoControl({
         ...start,
         x2_percent: end.x_percent,
         y2_percent: end.y_percent,
+        duration_ms: swipeDurationMs(start, end, Date.now() - pointer.startedAt),
       });
     },
     [send, videoRef]
@@ -191,6 +227,9 @@ export function useRemoteVideoControl({
         id: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        startedAt: Date.now(),
         moved: false,
         threshold: moveThresholdPx(video),
       };
@@ -205,9 +244,16 @@ export function useRemoteVideoControl({
       const pointer = activePointer.current;
       if (!pointer || pointer.id !== e.pointerId) return;
 
+      e.preventDefault();
+      pointer.lastX = e.clientX;
+      pointer.lastY = e.clientY;
+
       const dx = e.clientX - pointer.startX;
       const dy = e.clientY - pointer.startY;
-      if (Math.hypot(dx, dy) >= pointer.threshold) {
+      if (
+        Math.abs(dx) >= pointer.threshold ||
+        Math.abs(dy) >= pointer.threshold
+      ) {
         pointer.moved = true;
       }
     },
