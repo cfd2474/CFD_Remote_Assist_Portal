@@ -11,7 +11,14 @@ import { attachWebSocketHandlers } from "./ws/handlers.js";
 
 const app = express();
 
+app.set("etag", false);
+
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use((_req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.set("Pragma", "no-cache");
+  next();
+});
 app.use(
   cors({
     origin: config.corsOrigin,

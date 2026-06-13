@@ -8,17 +8,51 @@ import {
 } from "../services/devices.js";
 import type { DeviceRegistration, TelemetryPayload, DeviceEventPayload } from "../types.js";
 
+function normalizeRegistration(
+  body: Record<string, unknown> | undefined
+): DeviceRegistration | null {
+  if (!body?.uid || typeof body.uid !== "string") return null;
+
+  const deviceName =
+    (typeof body.device_name === "string" && body.device_name) ||
+    (typeof body.deviceName === "string" && body.deviceName) ||
+    (typeof body.name === "string" && body.name) ||
+    (typeof body.model === "string" && body.model) ||
+    `Device-${body.uid.slice(-6)}`;
+
+  return {
+    uid: body.uid,
+    serial: typeof body.serial === "string" ? body.serial : undefined,
+    imei: typeof body.imei === "string" ? body.imei : undefined,
+    device_name: deviceName,
+    model: typeof body.model === "string" ? body.model : undefined,
+    phone_number:
+      typeof body.phone_number === "string"
+        ? body.phone_number
+        : typeof body.phoneNumber === "string"
+          ? body.phoneNumber
+          : undefined,
+    app_version:
+      typeof body.app_version === "string"
+        ? body.app_version
+        : typeof body.appVersion === "string"
+          ? body.appVersion
+          : undefined,
+  };
+}
+
 export const deviceApiRouter = Router();
 
 deviceApiRouter.post("/register", async (req, res) => {
-  const body = req.body as DeviceRegistration;
+  const body = normalizeRegistration(req.body as Record<string, unknown>);
 
-  if (!body?.uid || !body?.device_name) {
-    res.status(400).json({ error: "uid and device_name are required" });
+  if (!body) {
+    res.status(400).json({ error: "uid is required" });
     return;
   }
 
   try {
+    console.log(`Device registration: uid=${body.uid} name=${body.device_name}`);
     const result = await registerDevice(body);
     res.status(result.is_new ? 201 : 200).json({
       uid: result.device.uid,
@@ -65,9 +99,14 @@ async function handlePing(req: Request, res: Response): Promise<void> {
   try {
     const device = await pingDevice(uid);
     if (!device) {
-      res.status(404).json({ error: "Device not recognized" });
+      console.log(`Device ping: uid=${uid} not recognized`);
+      res.status(404).json({
+        error: "Device not recognized",
+        hint: "Call POST /api/v1/register to enroll this device.",
+      });
       return;
     }
+    console.log(`Device ping: uid=${uid} recognized`);
     res.json({
       ok: true,
       uid: device.uid,

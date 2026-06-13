@@ -17,7 +17,11 @@ async function apiFetch<T>(
     headers.Authorization = `Bearer ${user.access_token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

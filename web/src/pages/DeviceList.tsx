@@ -17,6 +17,7 @@ export function DeviceList() {
       try {
         const data = await fetchDevices(auth.user!);
         setDevices(data);
+        setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load devices");
       } finally {
