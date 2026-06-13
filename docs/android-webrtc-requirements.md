@@ -17,22 +17,36 @@ Remote screen viewing requires the Android client to implement **screen capture 
 
 3. On `START_REMOTE_ADMIN`, the app must:
    - Request `MediaProjection` / screen-capture permission (if not already granted)
-   - Create `PeerConnection` with local video track from screen capture
+   - Create `PeerConnection` with local video track from screen capture (30fps half-resolution is fine)
    - Listen for WebRTC signaling on the **same device WebSocket**
 
 ## WebRTC signaling (via WebSocket)
 
-All messages use envelope `{ "type": "webrtc", ... }` on `/ws/device`.
+The Linux portal **relays** JSON messages with `"type": "webrtc"` between admin (`/ws/admin`) and device (`/ws/device`) for the same `uid`. Messages are **not modified** — only forwarded.
 
-### Admin → device (incoming on device)
+### Canonical message format (both directions)
 
-**SDP offer** (admin wants to receive video):
+Use standard WebRTC object field names:
+
+**Session description (offer or answer):**
 
 ```json
 {
   "type": "webrtc",
-  "signal": "offer",
-  "sdp": { "type": "offer", "sdp": "v=0\r\n..." }
+  "sdp": {
+    "type": "offer",
+    "sdp": "v=0\r\n..."
+  }
+}
+```
+
+```json
+{
+  "type": "webrtc",
+  "sdp": {
+    "type": "answer",
+    "sdp": "v=0\r\n..."
+  }
 }
 ```
 
@@ -41,44 +55,42 @@ All messages use envelope `{ "type": "webrtc", ... }` on `/ws/device`.
 ```json
 {
   "type": "webrtc",
-  "signal": "ice",
-  "candidate": { "candidate": "...", "sdpMid": "0", "sdpMLineIndex": 0 }
+  "ice": {
+    "candidate": "candidate:...",
+    "sdpMid": "0",
+    "sdpMLineIndex": 0
+  }
 }
 ```
 
-### Device → admin (outgoing from device)
+> The portal also accepts legacy `candidate` instead of `ice` for compatibility.
 
-**SDP answer** (after setting remote offer):
+### Negotiation flow
 
-```json
-{
-  "type": "webrtc",
-  "signal": "answer",
-  "sdp": { "type": "answer", "sdp": "v=0\r\n..." }
-}
-```
+1. Admin portal creates offer → relayed to device as `{ type: "webrtc", sdp: { type: "offer", ... } }`
+2. Device sets remote description, creates answer, sends `{ type: "webrtc", sdp: { type: "answer", ... } }`
+3. Both sides exchange `{ type: "webrtc", ice: { ... } }` as candidates are gathered
+4. Video stream begins after answer + ICE complete (30fps half-res from device is expected)
 
-**ICE candidates** (same format as above, `signal: "ice"`).
+### STUN
 
-Server relays these between admin `/ws/admin` and device `/ws/device` for the same `uid`.
+Both sides use: `stun:stun.l.google.com:19302`
 
 ## Android implementation checklist
 
 | Step | Action |
 |------|--------|
 | 1 | On `START_REMOTE_ADMIN`, start foreground service + MediaProjection |
-| 2 | `PeerConnectionFactory` + `PeerConnection` with STUN `stun:stun.l.google.com:19302` |
-| 3 | Add screen-capture `VideoTrack` to peer connection (`addTrack`) |
-| 4 | On `webrtc` + `offer`: `setRemoteDescription(offer)` → `createAnswer()` → `setLocalDescription()` → send `answer` |
-| 5 | On `webrtc` + `ice`: `addIceCandidate()` |
-| 6 | Send local ICE candidates to server as they are gathered |
-| 7 | On `STOP_REMOTE_ADMIN`, stop capture, close peer connection, stop foreground service |
+| 2 | `PeerConnectionFactory` + `PeerConnection` with STUN above |
+| 3 | Add screen-capture `VideoTrack` (30fps, half resolution OK) |
+| 4 | On `webrtc` + `sdp.type === "offer"`: `setRemoteDescription` → `createAnswer` → send `sdp` answer |
+| 5 | On `webrtc` + `ice`: `addIceCandidate` |
+| 6 | Send local ICE as `{ type: "webrtc", ice: { ... } }` |
+| 7 | On `STOP_REMOTE_ADMIN`, tear down capture and peer connection |
 
 ## Remote control (touch)
 
-After stream is active, admin sends touch via REST (not WebSocket):
-
-`POST /api/v1/control` is admin-only. Device receives **control** messages on WebSocket:
+Device receives on WebSocket:
 
 ```json
 {
@@ -89,17 +101,14 @@ After stream is active, admin sends touch via REST (not WebSocket):
 }
 ```
 
-Device must inject touch at normalized screen coordinates.
-
 ## Common failure modes
 
 | Symptom | Cause |
 |---------|--------|
-| Portal shows “Waiting for stream” / black video | App did not send WebRTC `answer` or screen track |
-| “Device offline (WebSocket)” | App not connected to `/ws/device` |
-| WebRTC connection failed | NAT traversal — may need TURN server later |
-| Connect works but no video | MediaProjection not started or video track not added |
+| Black screen / “Waiting for stream” | No `sdp` answer from device, or wrong field names |
+| “Device offline” | Not connected to `/ws/device` during session |
+| WebRTC connection failed | NAT — may need TURN later |
 
 ## STOP
 
-On `STOP_REMOTE_ADMIN` command, tear down WebRTC and screen capture immediately.
+On `STOP_REMOTE_ADMIN`, tear down WebRTC and screen capture immediately.

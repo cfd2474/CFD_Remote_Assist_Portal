@@ -1,4 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  outboundIce,
+  outboundOffer,
+  parseInboundSignaling,
+  isAnswer,
+} from "../utils/webrtcSignaling";
 
 type StreamStatus = "idle" | "negotiating" | "streaming" | "failed";
 
@@ -72,10 +78,7 @@ export function useWebRtcViewer({
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        sendSignaling({
-          signal: "ice",
-          candidate: event.candidate.toJSON(),
-        });
+        sendSignaling(outboundIce(event.candidate.toJSON()) as Record<string, unknown>);
       }
     };
 
@@ -95,7 +98,7 @@ export function useWebRtcViewer({
       pc.addTransceiver("video", { direction: "recvonly" });
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      sendSignaling({ signal: "offer", sdp: offer });
+      sendSignaling(outboundOffer(offer) as Record<string, unknown>);
     } catch (err) {
       clearNegotiationTimeout();
       setStatus("failed");
@@ -113,11 +116,11 @@ export function useWebRtcViewer({
       const pc = pcRef.current;
       if (!pc) return;
 
-      const signal = msg.signal as string;
+      const { sdp, ice } = parseInboundSignaling(msg);
 
-      if (signal === "answer" && msg.sdp) {
+      if (sdp && isAnswer(sdp)) {
         try {
-          await pc.setRemoteDescription(msg.sdp as RTCSessionDescriptionInit);
+          await pc.setRemoteDescription(sdp);
         } catch (err) {
           setStatus("failed");
           setError(
@@ -127,9 +130,9 @@ export function useWebRtcViewer({
         return;
       }
 
-      if (signal === "ice" && msg.candidate) {
+      if (ice) {
         try {
-          await pc.addIceCandidate(msg.candidate as RTCIceCandidateInit);
+          await pc.addIceCandidate(ice);
         } catch (err) {
           console.warn("ICE candidate error:", err);
         }

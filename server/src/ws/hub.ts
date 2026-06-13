@@ -121,7 +121,11 @@ export class ConnectionHub {
     if (client.role === "admin") {
       const deviceWs = this.devices.get(uid);
       if (deviceWs?.readyState === WebSocket.OPEN) {
-        deviceWs.send(JSON.stringify({ type: "webrtc", ...message }));
+        const relay = { type: "webrtc", ...message };
+        deviceWs.send(JSON.stringify(relay));
+        const sdp = message.sdp as { type?: string } | undefined;
+        const kind = sdp?.type ?? (message.signal as string | undefined) ?? "ice";
+        console.log(`WebRTC relay admin→device uid=${uid} kind=${kind}`);
       } else {
         console.log(`WebRTC relay dropped: device uid=${uid} not connected`);
       }
@@ -133,9 +137,12 @@ export class ConnectionHub {
       if (!adminSet?.size) {
         console.log(`WebRTC relay dropped: no admin watching uid=${uid}`);
       }
+      const sdp = message.sdp as { type?: string } | undefined;
+      const kind = sdp?.type ?? (message.signal as string | undefined) ?? "ice";
       adminSet?.forEach((adminWs) => {
         if (adminWs.readyState === WebSocket.OPEN) {
           adminWs.send(JSON.stringify({ type: "webrtc", ...message }));
+          console.log(`WebRTC relay device→admin uid=${uid} kind=${kind}`);
         }
       });
     }
