@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { fetchDevice, sendCommand } from "../api/client";
+import { fetchDevice, removeDevice, sendCommand } from "../api/client";
 import { useAdminWebSocket } from "../hooks/useAdminWebSocket";
 import { DeviceMap } from "../components/DeviceMap";
 import { RemoteViewer } from "../components/RemoteViewer";
@@ -9,12 +9,14 @@ import type { Device } from "../types";
 
 export function DeviceDetail() {
   const { uid } = useParams<{ uid: string }>();
+  const navigate = useNavigate();
   const auth = useAuth();
   const [device, setDevice] = useState<Device | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [remoteActive, setRemoteActive] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const { connected, deviceOnline, lastEvent, sendWebRtc, setWebRtcHandler } =
     useAdminWebSocket(uid, auth.user ?? null);
@@ -51,6 +53,25 @@ export function DeviceDetail() {
       void loadDevice();
     } catch (err) {
       setActionMessage(err instanceof Error ? err.message : "Command failed");
+    }
+  };
+
+  const handleRemoveDevice = async () => {
+    if (!auth.user || !uid || !device) return;
+
+    const confirmed = window.confirm(
+      `Remove "${device.device_name}" from the portal?\n\nThis permanently deletes the device record, telemetry history, and event log. The phone can register again later as a new enrollment.`
+    );
+    if (!confirmed) return;
+
+    setRemoving(true);
+    setActionMessage(null);
+    try {
+      await removeDevice(auth.user, uid);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setActionMessage(err instanceof Error ? err.message : "Failed to remove device");
+      setRemoving(false);
     }
   };
 
@@ -198,6 +219,22 @@ export function DeviceDetail() {
           <pre className="event-log">{JSON.stringify(lastEvent, null, 2)}</pre>
         </section>
       )}
+
+      <section className="panel panel-danger">
+        <h2>Remove device</h2>
+        <p>
+          Permanently delete this device and all associated telemetry and event
+          history from the portal.
+        </p>
+        <button
+          type="button"
+          className="btn-danger"
+          disabled={removing}
+          onClick={() => void handleRemoveDevice()}
+        >
+          {removing ? "Removing…" : "Remove device and clear data"}
+        </button>
+      </section>
     </div>
   );
 }

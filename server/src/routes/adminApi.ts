@@ -5,6 +5,7 @@ import {
   getDevice,
   getTelemetryHistory,
   getDeviceEvents,
+  deleteDevice,
 } from "../services/devices.js";
 import { hub } from "../ws/hub.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
@@ -142,6 +143,28 @@ adminApiRouter.post("/devices/:uid/control", async (req, res) => {
   } catch (err) {
     console.error("Control error:", err);
     res.status(500).json({ error: "Failed to send control packet" });
+  }
+});
+
+adminApiRouter.delete("/devices/:uid", async (req, res) => {
+  try {
+    const device = await getDevice(req.params.uid);
+    if (!device) {
+      res.status(404).json({ error: "Device not found" });
+      return;
+    }
+
+    hub.disconnectDevice(req.params.uid);
+    const removed = await deleteDevice(req.params.uid);
+    if (!removed) {
+      res.status(404).json({ error: "Device not found" });
+      return;
+    }
+
+    res.json({ ok: true, uid: req.params.uid });
+  } catch (err) {
+    console.error("Delete device error:", err);
+    res.status(500).json({ error: "Failed to remove device" });
   }
 });
 

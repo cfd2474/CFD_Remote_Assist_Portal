@@ -61,3 +61,9 @@ export async function sendControl(
     body: JSON.stringify(packet),
   });
 }
+
+export async function removeDevice(user: User, uid: string): Promise<void> {
+  await apiFetch(`/api/admin/devices/${uid}`, user, {
+    method: "DELETE",
+  });
+}

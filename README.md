@@ -66,6 +66,7 @@ Portal: `http://localhost` (or your configured host)
 |--------|------|------|-------------|
 | GET | `/api/admin/devices` | Bearer JWT | List devices |
 | GET | `/api/admin/devices/:uid` | Bearer JWT | Device detail |
+| DELETE | `/api/admin/devices/:uid` | Bearer JWT | Remove device and all data |
 | POST | `/api/admin/devices/:uid/command` | Bearer JWT | Send command |
 | POST | `/api/admin/devices/:uid/control` | Bearer JWT | Send touch packet |
 | WS | `/ws/admin` | OIDC token in auth | WebRTC signaling relay |

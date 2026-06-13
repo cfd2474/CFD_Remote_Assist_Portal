@@ -154,6 +154,15 @@ export class ConnectionHub {
     const ws = this.devices.get(uid);
     return !!ws && ws.readyState === WebSocket.OPEN;
   }
+
+  disconnectDevice(uid: string): void {
+    const ws = this.devices.get(uid);
+    if (ws) {
+      ws.close(4001, "Device removed from portal");
+    }
+    this.broadcastToAdmins(uid, { type: "device_removed", uid });
+    this.admins.delete(uid);
+  }
 }
 
 export const hub = new ConnectionHub();

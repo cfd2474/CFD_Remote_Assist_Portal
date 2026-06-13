@@ -154,6 +154,11 @@ export async function pingDevice(uid: string): Promise<DeviceRow | null> {
   return device;
 }
 
+export async function deleteDevice(uid: string): Promise<boolean> {
+  const result = await pool.query("DELETE FROM devices WHERE uid = $1", [uid]);
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function setDeviceOnline(uid: string, online: boolean): Promise<void> {
   await pool.query(
     "UPDATE devices SET is_online = $2, last_seen_at = NOW() WHERE uid = $1",
