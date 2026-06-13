@@ -66,6 +66,7 @@ export function RemoteViewer({
     return (
       <div className="remote-viewer remote-viewer--inactive">
         <p>Remote session is not active. Click <strong>Connect</strong> above to start.</p>
+        <p className="remote-hint">Signaling diagnostics below retain the last attempt trace.</p>
       </div>
     );
   }

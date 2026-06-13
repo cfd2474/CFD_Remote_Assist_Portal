@@ -5,14 +5,16 @@ import type { SignalingStatus } from "../types";
 
 interface SignalingDiagnosticsProps {
   uid: string;
-  active: boolean;
+  visible: boolean;
   liveStatus?: SignalingStatus | null;
+  onHide?: () => void;
 }
 
 export function SignalingDiagnostics({
   uid,
-  active,
+  visible,
   liveStatus,
+  onHide,
 }: SignalingDiagnosticsProps) {
   const auth = useAuth();
   const [status, setStatus] = useState<SignalingStatus | null>(liveStatus ?? null);
@@ -23,7 +25,7 @@ export function SignalingDiagnostics({
   }, [liveStatus]);
 
   useEffect(() => {
-    if (!active || !auth.user) return;
+    if (!visible || !auth.user) return;
 
     const load = async () => {
       try {
@@ -38,13 +40,25 @@ export function SignalingDiagnostics({
     void load();
     const interval = setInterval(() => void load(), 3000);
     return () => clearInterval(interval);
-  }, [active, auth.user, uid]);
+  }, [visible, auth.user, uid]);
 
-  if (!active) return null;
+  if (!visible && !status?.trace.length) return null;
 
   return (
     <div className="signaling-diagnostics">
-      <h3>WebRTC signaling diagnostics</h3>
+      <div className="signaling-diagnostics-header">
+        <h3>WebRTC signaling diagnostics</h3>
+        {onHide && (
+          <button type="button" className="btn-link" onClick={onHide}>
+            Hide
+          </button>
+        )}
+      </div>
+      {!visible && status?.trace.length ? (
+        <p className="remote-hint">
+          Session ended — showing the last signaling trace from this attempt.
+        </p>
+      ) : null}
       {error && <p className="remote-error">{error}</p>}
       {status && (
         <>

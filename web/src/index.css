@@ -384,6 +384,28 @@ button:hover {
   font-size: 1rem;
 }
 
+.signaling-diagnostics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.signaling-diagnostics-header h3 {
+  margin: 0;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
 .signaling-stats {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));

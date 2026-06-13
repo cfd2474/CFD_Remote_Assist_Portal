@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { fetchDevice, removeDevice, sendCommand } from "../api/client";
@@ -17,7 +17,9 @@ export function DeviceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [remoteActive, setRemoteActive] = useState(false);
+  const [diagnosticsPinned, setDiagnosticsPinned] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const initialLoadDone = useRef(false);
 
   const { connected, deviceOnline, lastEvent, signalingStatus, sendWebRtc, setWebRtcHandler } =
     useAdminWebSocket(uid, auth.user ?? null);
@@ -27,7 +29,13 @@ export function DeviceDetail() {
     try {
       const data = await fetchDevice(auth.user, uid);
       setDevice(data);
-      setRemoteActive(data.remote_admin_active);
+      if (!initialLoadDone.current) {
+        setRemoteActive(data.remote_admin_active);
+        if (data.remote_admin_active) setDiagnosticsPinned(true);
+        initialLoadDone.current = true;
+      } else if (data.remote_admin_active) {
+        setRemoteActive(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load device");
     } finally {
@@ -58,7 +66,10 @@ export function DeviceDetail() {
     setActionMessage(null);
     try {
       const result = await sendCommand(auth.user, uid, command);
-      if (command === "START_REMOTE_ADMIN") setRemoteActive(true);
+      if (command === "START_REMOTE_ADMIN") {
+        setRemoteActive(true);
+        setDiagnosticsPinned(true);
+      }
       if (command === "STOP_REMOTE_ADMIN") setRemoteActive(false);
       setActionMessage(
         result.delivery === "queued"
@@ -243,8 +254,9 @@ export function DeviceDetail() {
         />
         <SignalingDiagnostics
           uid={device.uid}
-          active={remoteActive}
+          visible={diagnosticsPinned || remoteActive}
           liveStatus={signalingStatus}
+          onHide={() => setDiagnosticsPinned(false)}
         />
       </section>
 
