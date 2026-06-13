@@ -41,6 +41,11 @@ const NO_ICE_ERROR =
   "on the same WebSocket after the answer, or via POST /api/v1/signaling.";
 
 const ICE_WAIT_MS = 20_000;
+const STREAM_WAIT_MS = 25_000;
+
+const NO_STREAM_ERROR =
+  "WebRTC connected but no video track arrived. The Android app must attach screen capture " +
+  "to the PeerConnection before createAnswer() and include a sendonly video m-line in the SDP answer.";
 
 const NO_ANSWER_ERROR =
   "The server delivered a WebRTC offer to the device, but no SDP answer came back. " +
@@ -63,6 +68,7 @@ export function useWebRtcViewer({
   const retryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scheduleDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const iceWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
   const pendingAnswerRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -103,6 +109,13 @@ export function useWebRtcViewer({
     }
   }, []);
 
+  const clearStreamWait = useCallback(() => {
+    if (streamWaitRef.current) {
+      clearTimeout(streamWaitRef.current);
+      streamWaitRef.current = null;
+    }
+  }, []);
+
   const enqueueSignaling = useCallback((fn: () => Promise<void>) => {
     signalingQueueRef.current = signalingQueueRef.current
       .then(fn)
@@ -121,11 +134,77 @@ export function useWebRtcViewer({
     }
   }, []);
 
+  const attachRemoteVideo = useCallback(
+    (pc: RTCPeerConnection, track: MediaStreamTrack) => {
+      if (!videoRef.current || track.kind !== "video") return false;
+
+      const stream = new MediaStream([track]);
+
+      const video = videoRef.current;
+      video.srcObject = stream;
+      void video.play().catch(() => undefined);
+      setStreamActive(true);
+      setStatus("streaming");
+      setError(null);
+      clearNegotiationTimeout();
+      clearOfferRetry();
+      clearIceWait();
+      clearStreamWait();
+
+      window.setTimeout(() => {
+        if (pcRef.current !== pc || !videoRef.current) return;
+        if (videoRef.current.videoWidth === 0 && videoRef.current.videoHeight === 0) {
+          setStreamActive(false);
+          setStatus("failed");
+          setError(
+            "WebRTC track received but no video frames (0×0). The Android app PeerConnection is up but screen capture is not feeding the video track."
+          );
+        }
+      }, 12_000);
+
+      return true;
+    },
+    [clearNegotiationTimeout, clearOfferRetry, clearIceWait, clearStreamWait]
+  );
+
+  const tryAttachFromReceivers = useCallback(
+    (pc: RTCPeerConnection): boolean => {
+      for (const receiver of pc.getReceivers()) {
+        const track = receiver.track;
+        if (track?.kind === "video") {
+          return attachRemoteVideo(pc, track);
+        }
+      }
+      for (const transceiver of pc.getTransceivers()) {
+        const track = transceiver.receiver.track;
+        if (track?.kind === "video") {
+          return attachRemoteVideo(pc, track);
+        }
+      }
+      return false;
+    },
+    [attachRemoteVideo]
+  );
+
+  const scheduleStreamWait = useCallback(
+    (pc: RTCPeerConnection) => {
+      clearStreamWait();
+      streamWaitRef.current = setTimeout(() => {
+        if (pcRef.current !== pc) return;
+        if (tryAttachFromReceivers(pc)) return;
+        setError(NO_STREAM_ERROR);
+        setStatus("failed");
+      }, STREAM_WAIT_MS);
+    },
+    [clearStreamWait, tryAttachFromReceivers]
+  );
+
   const cleanup = useCallback(() => {
     clearNegotiationTimeout();
     clearScheduleDelay();
     clearOfferRetry();
     clearIceWait();
+    clearStreamWait();
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
     pendingAnswerRef.current = null;
@@ -139,7 +218,7 @@ export function useWebRtcViewer({
     }
     setStreamActive(false);
     setStatus("idle");
-  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait]);
+  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait, clearStreamWait]);
 
   const addRemoteIce = useCallback(
     async (ice: RTCIceCandidateInit) => {
@@ -184,6 +263,8 @@ export function useWebRtcViewer({
             clearIceWait();
             setError(null);
             setStatus("connecting");
+            scheduleStreamWait(pc);
+            tryAttachFromReceivers(pc);
             return true;
           }
           if (pc.localDescription?.type !== "offer") {
@@ -208,6 +289,8 @@ export function useWebRtcViewer({
           setError(null);
           setStatus("connecting");
           await flushPendingIce(pc);
+          tryAttachFromReceivers(pc);
+          scheduleStreamWait(pc);
           iceWaitRef.current = setTimeout(() => {
             if (pcRef.current !== pc) return;
             if (
@@ -215,8 +298,10 @@ export function useWebRtcViewer({
               pc.iceConnectionState !== "connected" &&
               pc.iceConnectionState !== "completed"
             ) {
-              setError(NO_ICE_ERROR);
-              setStatus("failed");
+              if (!tryAttachFromReceivers(pc)) {
+                setError(NO_ICE_ERROR);
+                setStatus("failed");
+              }
             }
           }, ICE_WAIT_MS);
           return true;
@@ -227,6 +312,8 @@ export function useWebRtcViewer({
             setError(null);
             setStatus("connecting");
             await flushPendingIce(pc);
+            tryAttachFromReceivers(pc);
+            scheduleStreamWait(pc);
             return true;
           }
           setStatus("failed");
@@ -240,7 +327,14 @@ export function useWebRtcViewer({
       pendingAnswerRef.current = sdp;
       return false;
     },
-    [clearScheduleDelay, clearOfferRetry, clearIceWait, flushPendingIce]
+    [
+      clearScheduleDelay,
+      clearOfferRetry,
+      clearIceWait,
+      flushPendingIce,
+      scheduleStreamWait,
+      tryAttachFromReceivers,
+    ]
   );
 
   const startSession = useCallback(async () => {
@@ -281,27 +375,18 @@ export function useWebRtcViewer({
     }, NEGOTIATION_TIMEOUT_MS);
 
     pc.ontrack = (event) => {
-      clearNegotiationTimeout();
-      clearOfferRetry();
-      clearIceWait();
-      if (videoRef.current && event.streams[0]) {
-        const video = videoRef.current;
-        video.srcObject = event.streams[0];
-        void video.play().catch(() => undefined);
-        setStreamActive(true);
-        setStatus("streaming");
-        setError(null);
-
-        window.setTimeout(() => {
-          if (pcRef.current !== pc || !videoRef.current) return;
-          if (videoRef.current.videoWidth === 0 && videoRef.current.videoHeight === 0) {
-            setStreamActive(false);
-            setStatus("failed");
-            setError(
-              "WebRTC track received but no video frames (0×0). The Android app PeerConnection is up but screen capture is not feeding the video track."
-            );
-          }
-        }, 12_000);
+      const track = event.track;
+      if (track?.kind === "video") {
+        attachRemoteVideo(pc, track);
+        track.onunmute = () => {
+          attachRemoteVideo(pc, track);
+        };
+        return;
+      }
+      const stream = event.streams[0];
+      if (stream) {
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) attachRemoteVideo(pc, videoTrack);
       }
     };
 
@@ -315,6 +400,7 @@ export function useWebRtcViewer({
       if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
         clearIceWait();
         setError(null);
+        tryAttachFromReceivers(pc);
       }
     };
 
@@ -322,6 +408,7 @@ export function useWebRtcViewer({
       if (pc.connectionState === "connected") {
         clearIceWait();
         setError(null);
+        tryAttachFromReceivers(pc);
       } else if (pc.connectionState === "failed") {
         clearNegotiationTimeout();
         clearOfferRetry();
@@ -358,7 +445,16 @@ export function useWebRtcViewer({
         startingSessionRef.current = false;
       }
     }
-  }, [applyAnswer, clearNegotiationTimeout, clearOfferRetry, clearScheduleDelay, clearIceWait, sendSignaling]);
+  }, [
+    applyAnswer,
+    attachRemoteVideo,
+    tryAttachFromReceivers,
+    clearNegotiationTimeout,
+    clearOfferRetry,
+    clearScheduleDelay,
+    clearIceWait,
+    sendSignaling,
+  ]);
 
   startSessionRef.current = startSession;
 
@@ -388,17 +484,16 @@ export function useWebRtcViewer({
 
   useEffect(() => {
     if (!enabled || !deviceUid || !user) return;
-    if (receivedAnswerRef.current || streamActive) return;
-    if (status !== "negotiating" && !serverAnswerReceived) return;
+    if (streamActive) return;
+    if (status !== "negotiating" && status !== "connecting" && !serverAnswerReceived) return;
 
     const pollReplay = () => {
-      if (receivedAnswerRef.current) return;
       void fetchSignalingReplay(user, deviceUid)
         .then(({ messages }) => {
           for (const msg of messages) {
             enqueueSignaling(async () => {
               const { sdp, ice } = parseInboundSignaling(msg);
-              if (sdp && isAnswer(sdp)) {
+              if (sdp && isAnswer(sdp) && !receivedAnswerRef.current) {
                 await applyAnswer(sdp);
               } else if (ice) {
                 await addRemoteIce(ice);
