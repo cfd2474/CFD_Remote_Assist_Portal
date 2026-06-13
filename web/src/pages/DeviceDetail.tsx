@@ -21,7 +21,7 @@ export function DeviceDetail() {
   const [removing, setRemoving] = useState(false);
   const initialLoadDone = useRef(false);
 
-  const { connected, deviceOnline, lastEvent, signalingStatus, sendWebRtc, setWebRtcHandler } =
+  const { connected, deviceOnline, deviceReconnecting, lastEvent, signalingStatus, sendWebRtc, setWebRtcHandler } =
     useAdminWebSocket(uid, auth.user ?? null);
 
   const loadDevice = useCallback(async () => {
@@ -119,9 +119,19 @@ export function DeviceDetail() {
         <h1>{device.device_name}</h1>
         <div className="device-meta">
           <span
-            className={`badge ${deviceOnline ? "badge-online" : "badge-offline"}`}
+            className={`badge ${
+              deviceOnline
+                ? "badge-online"
+                : deviceReconnecting
+                  ? "badge-neutral"
+                  : "badge-offline"
+            }`}
           >
-            {deviceOnline ? "Live" : "Not connected"}
+            {deviceOnline
+              ? "Live"
+              : deviceReconnecting
+                ? "Reconnecting…"
+                : "Not connected"}
           </span>
           <span className="badge badge-neutral">
             WS {connected ? "connected" : "disconnected"}
@@ -248,7 +258,8 @@ export function DeviceDetail() {
           sendWebRtc={sendWebRtc}
           onSignaling={setWebRtcHandler}
           active={remoteActive}
-          deviceOnline={deviceOnline}
+          deviceOnline={deviceOnline || deviceReconnecting}
+          deviceReconnecting={deviceReconnecting}
           adminWsConnected={connected}
           deviceStreamReady={deviceStreamReady}
         />

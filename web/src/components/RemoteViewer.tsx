@@ -10,6 +10,7 @@ interface RemoteViewerProps {
   onSignaling: (handler: (msg: Record<string, unknown>) => void) => void;
   active: boolean;
   deviceOnline: boolean;
+  deviceReconnecting?: boolean;
   adminWsConnected: boolean;
   deviceStreamReady: boolean;
 }
@@ -17,9 +18,11 @@ interface RemoteViewerProps {
 function statusLabel(
   status: string,
   streamActive: boolean,
-  deviceOnline: boolean
+  deviceOnline: boolean,
+  deviceReconnecting: boolean
 ): string {
   if (streamActive) return "Streaming";
+  if (deviceReconnecting) return "Device reconnecting WebSocket…";
   if (!deviceOnline) return "Device offline (WebSocket)";
   if (status === "waiting") return "Waiting for device screen capture…";
   if (status === "negotiating") return "Offer sent — waiting for SDP answer…";
@@ -34,6 +37,7 @@ export function RemoteViewer({
   onSignaling,
   active,
   deviceOnline,
+  deviceReconnecting = false,
   adminWsConnected,
   deviceStreamReady,
 }: RemoteViewerProps) {
@@ -78,7 +82,7 @@ export function RemoteViewer({
           {streamActive ? "Restart stream" : "Retry WebRTC"}
         </button>
         <span className={streamActive ? "status-ok" : "status-warn"}>
-          {statusLabel(status, streamActive, deviceOnline)}
+          {statusLabel(status, streamActive, deviceOnline, deviceReconnecting)}
         </span>
       </div>
 

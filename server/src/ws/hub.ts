@@ -37,8 +37,17 @@ export class ConnectionHub {
   private devices = new Map<string, WebSocket>();
   private admins = new Map<string, Set<WebSocket>>();
   private clients = new WeakMap<WebSocket, ConnectedClient>();
+  private offlineTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  private static readonly OFFLINE_GRACE_MS = 8_000;
 
   registerDevice(ws: WebSocket, uid: string): void {
+    const pendingOffline = this.offlineTimers.get(uid);
+    if (pendingOffline) {
+      clearTimeout(pendingOffline);
+      this.offlineTimers.delete(uid);
+    }
+
     const existing = this.devices.get(uid);
     const replacing = existing && existing !== ws;
 
@@ -74,16 +83,35 @@ export class ConnectionHub {
     if (!client) return;
 
     if (client.role === "device" && client.uid) {
-      const current = this.devices.get(client.uid);
+      const uid = client.uid;
+      const current = this.devices.get(uid);
       if (current === ws) {
-        this.devices.delete(client.uid);
-        void setDeviceOnline(client.uid, false);
-        void setRemoteAdminActive(client.uid, false);
-        this.broadcastToAdmins(client.uid, {
-          type: "device_status",
-          uid: client.uid,
-          online: false,
-        });
+        this.devices.delete(uid);
+
+        const existing = this.offlineTimers.get(uid);
+        if (existing) clearTimeout(existing);
+
+        this.offlineTimers.set(
+          uid,
+          setTimeout(() => {
+            this.offlineTimers.delete(uid);
+            if (this.isDeviceOnline(uid)) return;
+
+            console.log(`Device WebSocket offline: uid=${uid} (grace elapsed)`);
+            void setDeviceOnline(uid, false);
+
+            const session = getSignalingStatus(uid);
+            if (!session.remoteActive) {
+              void setRemoteAdminActive(uid, false);
+            }
+
+            this.broadcastToAdmins(uid, {
+              type: "device_status",
+              uid,
+              online: false,
+            });
+          }, ConnectionHub.OFFLINE_GRACE_MS)
+        );
       }
     }
 

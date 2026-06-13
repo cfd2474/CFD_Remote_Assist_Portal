@@ -3,11 +3,14 @@ import type { User } from "oidc-client-ts";
 import type { SignalingStatus } from "../types";
 
 const WS_BASE = import.meta.env.VITE_WS_BASE ?? "";
+const DEVICE_OFFLINE_DEBOUNCE_MS = 6_000;
 
 export function useAdminWebSocket(uid: string | undefined, user: User | null) {
   const wsRef = useRef<WebSocket | null>(null);
+  const offlineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [connected, setConnected] = useState(false);
   const [deviceOnline, setDeviceOnline] = useState(false);
+  const [deviceReconnecting, setDeviceReconnecting] = useState(false);
   const [lastEvent, setLastEvent] = useState<Record<string, unknown> | null>(
     null
   );
@@ -17,6 +20,29 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
   const onWebRtcRef = useRef<((msg: Record<string, unknown>) => void) | null>(
     null
   );
+
+  const clearOfflineTimer = useCallback(() => {
+    if (offlineTimerRef.current) {
+      clearTimeout(offlineTimerRef.current);
+      offlineTimerRef.current = null;
+    }
+  }, []);
+
+  const markDeviceOnline = useCallback(() => {
+    clearOfflineTimer();
+    setDeviceReconnecting(false);
+    setDeviceOnline(true);
+  }, [clearOfflineTimer]);
+
+  const markDeviceOfflineSoon = useCallback(() => {
+    clearOfflineTimer();
+    setDeviceReconnecting(true);
+    offlineTimerRef.current = setTimeout(() => {
+      offlineTimerRef.current = null;
+      setDeviceReconnecting(false);
+      setDeviceOnline(false);
+    }, DEVICE_OFFLINE_DEBOUNCE_MS);
+  }, [clearOfflineTimer]);
 
   const sendWebRtc = useCallback((message: Record<string, unknown>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -58,7 +84,11 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
       }
 
       if (msg.type === "device_status") {
-        setDeviceOnline(!!msg.online);
+        if (msg.online) {
+          markDeviceOnline();
+        } else {
+          markDeviceOfflineSoon();
+        }
         return;
       }
 
@@ -73,26 +103,34 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
       }
 
       if (msg.type === "signaling_status") {
-        setSignalingStatus(msg as unknown as SignalingStatus);
+        const status = msg as unknown as SignalingStatus;
+        setSignalingStatus(status);
+        if (status.deviceWsConnected) {
+          markDeviceOnline();
+        }
       }
     };
 
     ws.onclose = () => {
       setConnected(false);
+      clearOfflineTimer();
+      setDeviceReconnecting(false);
       setDeviceOnline(false);
     };
 
     wsRef.current = ws;
 
     return () => {
+      clearOfflineTimer();
       ws.close();
       wsRef.current = null;
     };
-  }, [uid, user?.access_token]);
+  }, [uid, user?.access_token, markDeviceOnline, markDeviceOfflineSoon, clearOfflineTimer]);
 
   return {
     connected,
     deviceOnline,
+    deviceReconnecting,
     lastEvent,
     signalingStatus,
     sendWebRtc,

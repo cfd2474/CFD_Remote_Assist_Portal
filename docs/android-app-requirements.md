@@ -414,7 +414,7 @@ After `createAnswer()`, register `PeerConnection.Observer.onIceCandidate` (or eq
 
 Send each candidate on the **same WebSocket** used for the answer, or `POST /api/v1/signaling` per candidate.
 
-Do **not** reconnect the WebSocket during an active remote session — it disrupts signaling.
+Do **not** reconnect the WebSocket during an active remote session — it disrupts signaling and causes the portal to briefly show the device as offline. Keep one persistent connection open for the entire session.
 
 If using trickle ICE, candidates arrive after the answer; both are required. Bundling all candidates inside the SDP string can work but only if the SDP actually contains `a=candidate:` lines.
 
