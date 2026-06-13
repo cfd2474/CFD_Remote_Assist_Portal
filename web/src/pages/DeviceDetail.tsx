@@ -214,6 +214,8 @@ export function DeviceDetail() {
           sendWebRtc={sendWebRtc}
           onSignaling={setWebRtcHandler}
           active={remoteActive}
+          deviceOnline={deviceOnline || device.is_online}
+          adminWsConnected={connected}
         />
       </section>
 

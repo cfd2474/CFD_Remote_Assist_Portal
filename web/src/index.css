@@ -305,6 +305,12 @@ button:hover {
   color: var(--text-muted);
 }
 
+.remote-error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--danger);
+}
+
 .status-ok {
   color: var(--success);
 }

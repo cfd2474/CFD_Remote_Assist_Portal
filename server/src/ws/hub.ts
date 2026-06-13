@@ -122,12 +122,17 @@ export class ConnectionHub {
       const deviceWs = this.devices.get(uid);
       if (deviceWs?.readyState === WebSocket.OPEN) {
         deviceWs.send(JSON.stringify({ type: "webrtc", ...message }));
+      } else {
+        console.log(`WebRTC relay dropped: device uid=${uid} not connected`);
       }
       return;
     }
 
     if (client.role === "device") {
       const adminSet = this.admins.get(uid);
+      if (!adminSet?.size) {
+        console.log(`WebRTC relay dropped: no admin watching uid=${uid}`);
+      }
       adminSet?.forEach((adminWs) => {
         if (adminWs.readyState === WebSocket.OPEN) {
           adminWs.send(JSON.stringify({ type: "webrtc", ...message }));
