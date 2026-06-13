@@ -50,6 +50,9 @@ export function useWebRtcViewer({
   const iceWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
+  const pendingAnswerRef = useRef<RTCSessionDescriptionInit | null>(null);
+  const startingSessionRef = useRef(false);
+  const startSessionRef = useRef<(() => Promise<void>) | null>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [status, setStatus] = useState<StreamStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +92,8 @@ export function useWebRtcViewer({
     clearIceWait();
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
+    pendingAnswerRef.current = null;
+    startingSessionRef.current = false;
     pcRef.current?.close();
     pcRef.current = null;
     if (videoRef.current) {
@@ -98,15 +103,88 @@ export function useWebRtcViewer({
     setStatus("idle");
   }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait]);
 
+  const applyAnswer = useCallback(
+    async (sdp: RTCSessionDescriptionInit): Promise<boolean> => {
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const pc = pcRef.current;
+        if (!pc) {
+          await new Promise((r) => window.setTimeout(r, 50));
+          continue;
+        }
+
+        if (pc.signalingState === "stable") {
+          if (pc.remoteDescription?.type === "answer") {
+            receivedAnswerRef.current = true;
+            clearScheduleDelay();
+            clearOfferRetry();
+            clearIceWait();
+            setError(null);
+            return true;
+          }
+          if (pc.localDescription?.type !== "offer") {
+            pendingAnswerRef.current = sdp;
+            return false;
+          }
+        }
+
+        if (pc.signalingState !== "have-local-offer") {
+          await new Promise((r) => window.setTimeout(r, 50));
+          continue;
+        }
+
+        clearScheduleDelay();
+        clearOfferRetry();
+        try {
+          await pc.setRemoteDescription(sdp);
+          receivedAnswerRef.current = true;
+          pendingAnswerRef.current = null;
+          clearIceWait();
+          setError(null);
+          iceWaitRef.current = setTimeout(() => {
+            if (pcRef.current !== pc) return;
+            if (
+              pc.connectionState !== "connected" &&
+              pc.iceConnectionState !== "connected" &&
+              pc.iceConnectionState !== "completed"
+            ) {
+              setError(NO_ICE_ERROR);
+              setStatus("failed");
+            }
+          }, ICE_WAIT_MS);
+          return true;
+        } catch (err) {
+          if (pc.remoteDescription?.type === "answer") {
+            receivedAnswerRef.current = true;
+            pendingAnswerRef.current = null;
+            setError(null);
+            return true;
+          }
+          setStatus("failed");
+          setError(
+            err instanceof Error ? err.message : "Invalid WebRTC answer from device"
+          );
+          return false;
+        }
+      }
+
+      pendingAnswerRef.current = sdp;
+      return false;
+    },
+    [clearScheduleDelay, clearOfferRetry, clearIceWait]
+  );
+
   const startSession = useCallback(async () => {
+    if (startingSessionRef.current) return;
     if (receivedAnswerRef.current && pcRef.current) {
       return;
     }
 
+    startingSessionRef.current = true;
     clearScheduleDelay();
     clearOfferRetry();
     clearIceWait();
     receivedAnswerRef.current = false;
+    pendingAnswerRef.current = null;
     pcRef.current?.close();
     pcRef.current = null;
     if (videoRef.current) {
@@ -124,9 +202,7 @@ export function useWebRtcViewer({
 
     timeoutRef.current = setTimeout(() => {
       if (pcRef.current !== pc || receivedAnswerRef.current) return;
-      setError(
-        receivedAnswerRef.current ? null : NO_ANSWER_ERROR
-      );
+      setError(receivedAnswerRef.current ? null : NO_ANSWER_ERROR);
       setStatus("failed");
       setStreamActive(false);
     }, NEGOTIATION_TIMEOUT_MS);
@@ -143,7 +219,6 @@ export function useWebRtcViewer({
         setStatus("streaming");
         setError(null);
 
-        // Detect empty/black tracks (signaling OK but no frames from screen capture)
         window.setTimeout(() => {
           if (pcRef.current !== pc || !videoRef.current) return;
           if (videoRef.current.videoWidth === 0 && videoRef.current.videoHeight === 0) {
@@ -191,13 +266,22 @@ export function useWebRtcViewer({
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       sendSignaling(outboundOffer(offer) as Record<string, unknown>);
+
+      const pending = pendingAnswerRef.current;
+      if (pending) {
+        await applyAnswer(pending);
+      }
     } catch (err) {
       clearNegotiationTimeout();
       clearOfferRetry();
       setStatus("failed");
       setError(err instanceof Error ? err.message : "Failed to start WebRTC session");
+    } finally {
+      startingSessionRef.current = false;
     }
-  }, [cleanup, clearNegotiationTimeout, clearOfferRetry, sendSignaling]);
+  }, [applyAnswer, clearNegotiationTimeout, clearOfferRetry, clearScheduleDelay, clearIceWait, sendSignaling]);
+
+  startSessionRef.current = startSession;
 
   useEffect(() => {
     if (!enabled) {
@@ -206,48 +290,15 @@ export function useWebRtcViewer({
     }
 
     const handleSignaling = async (msg: Record<string, unknown>) => {
-      const pc = pcRef.current;
-      if (!pc) return;
-
       const { sdp, ice } = parseInboundSignaling(msg);
 
       if (sdp && isAnswer(sdp)) {
-        if (pc.signalingState !== "have-local-offer") {
-          // Duplicate or late answer after negotiation finished — ignore.
-          return;
-        }
-
-        clearScheduleDelay();
-        clearOfferRetry();
-        try {
-          await pc.setRemoteDescription(sdp);
-          receivedAnswerRef.current = true;
-          clearIceWait();
-          setError(null);
-          iceWaitRef.current = setTimeout(() => {
-            if (pcRef.current !== pc) return;
-            if (
-              pc.connectionState !== "connected" &&
-              pc.iceConnectionState !== "connected" &&
-              pc.iceConnectionState !== "completed"
-            ) {
-              setError(NO_ICE_ERROR);
-              setStatus("failed");
-            }
-          }, ICE_WAIT_MS);
-        } catch (err) {
-          if (pc.remoteDescription?.type === "answer") {
-            receivedAnswerRef.current = true;
-            setError(null);
-            return;
-          }
-          setStatus("failed");
-          setError(
-            err instanceof Error ? err.message : "Invalid WebRTC answer from device"
-          );
-        }
+        await applyAnswer(sdp);
         return;
       }
+
+      const pc = pcRef.current;
+      if (!pc) return;
 
       if (ice) {
         clearIceWait();
@@ -260,24 +311,25 @@ export function useWebRtcViewer({
     };
 
     onSignaling(handleSignaling);
-  }, [enabled, cleanup, onSignaling]);
+  }, [enabled, cleanup, onSignaling, applyAnswer]);
 
   const scheduleOffer = useCallback(() => {
     clearScheduleDelay();
     clearOfferRetry();
     clearIceWait();
     offerAttemptRef.current = 0;
-
-    const delay = deviceStreamReady ? CAPTURE_WARMUP_MS : OFFER_DELAY_MS;
     setStatus("waiting");
+
+    // Wait for webrtc_ready — deviceStreamReady effect sends the offer after warmup.
+    if (deviceStreamReady) return;
 
     scheduleDelayRef.current = setTimeout(() => {
       scheduleDelayRef.current = null;
-      if (receivedAnswerRef.current) return;
-      void startSession();
+      if (receivedAnswerRef.current || deviceStreamReady) return;
+      void startSessionRef.current?.();
 
       retryRef.current = setInterval(() => {
-        if (receivedAnswerRef.current) {
+        if (receivedAnswerRef.current || deviceStreamReady) {
           clearOfferRetry();
           return;
         }
@@ -285,10 +337,10 @@ export function useWebRtcViewer({
           clearOfferRetry();
           return;
         }
-        void startSession();
+        void startSessionRef.current?.();
       }, OFFER_RETRY_MS);
-    }, delay);
-  }, [deviceStreamReady, startSession, clearOfferRetry, clearScheduleDelay]);
+    }, OFFER_DELAY_MS);
+  }, [deviceStreamReady, clearOfferRetry, clearScheduleDelay, clearIceWait]);
 
   const autoStartedRef = useRef(false);
 
@@ -319,10 +371,10 @@ export function useWebRtcViewer({
     clearOfferRetry();
     setStatus("waiting");
     const warmup = window.setTimeout(() => {
-      if (!receivedAnswerRef.current) void startSession();
+      if (!receivedAnswerRef.current) void startSessionRef.current?.();
     }, CAPTURE_WARMUP_MS);
     return () => window.clearTimeout(warmup);
-  }, [deviceStreamReady, enabled, signalingReady, startSession, streamActive, clearScheduleDelay, clearOfferRetry]);
+  }, [deviceStreamReady, enabled, signalingReady, streamActive, clearScheduleDelay, clearOfferRetry]);
 
   useEffect(() => cleanup, [cleanup]);
 

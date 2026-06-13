@@ -18,6 +18,9 @@ export function DeviceDetail() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [remoteActive, setRemoteActive] = useState(false);
   const [diagnosticsPinned, setDiagnosticsPinned] = useState(false);
+  const [remoteSessionId, setRemoteSessionId] = useState(0);
+  const [webrtcReadySessionId, setWebrtcReadySessionId] = useState(0);
+  const remoteSessionIdRef = useRef(0);
   const [removing, setRemoving] = useState(false);
   const initialLoadDone = useRef(false);
 
@@ -54,6 +57,12 @@ export function DeviceDetail() {
   }, [auth.user, uid]);
 
   useEffect(() => {
+    if (lastEvent?.event === "WEBRTC_READY") {
+      setWebrtcReadySessionId(remoteSessionIdRef.current);
+    }
+  }, [lastEvent]);
+
+  useEffect(() => {
     void loadDevice();
     const interval = setInterval(() => void loadDevice(), 10000);
     return () => clearInterval(interval);
@@ -69,6 +78,9 @@ export function DeviceDetail() {
       if (command === "START_REMOTE_ADMIN") {
         setRemoteActive(true);
         setDiagnosticsPinned(true);
+        remoteSessionIdRef.current += 1;
+        setRemoteSessionId(remoteSessionIdRef.current);
+        setWebrtcReadySessionId(0);
       }
       if (command === "STOP_REMOTE_ADMIN") setRemoteActive(false);
       setActionMessage(
@@ -106,9 +118,11 @@ export function DeviceDetail() {
 
   const hasLocation = device.last_lat != null && device.last_lon != null;
   const deviceStreamReady =
-    lastEvent?.event === "WEBRTC_READY" ||
-    lastEvent?.event === "REMOTE_SESSION_STARTED" ||
-    lastEvent?.event === "REMOTE_READY";
+    remoteSessionId > 0 &&
+    webrtcReadySessionId === remoteSessionId &&
+    (lastEvent?.event === "WEBRTC_READY" ||
+      lastEvent?.event === "REMOTE_SESSION_STARTED" ||
+      lastEvent?.event === "REMOTE_READY");
 
   return (
     <div className="page">
