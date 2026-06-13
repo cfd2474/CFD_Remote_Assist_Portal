@@ -26,6 +26,17 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+app.use("/api/v1", (req, res, next) => {
+  const started = Date.now();
+  res.on("finish", () => {
+    console.log(
+      `Device API ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - started}ms ip=${req.ip}`
+    );
+  });
+  next();
+});
 
 const deviceLimiter = rateLimit({
   windowMs: 60_000,
