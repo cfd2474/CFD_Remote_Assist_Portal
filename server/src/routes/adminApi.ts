@@ -10,6 +10,7 @@ import {
 } from "../services/devices.js";
 import { hub } from "../ws/hub.js";
 import { queueCommand } from "../services/commands.js";
+import { setRemoteSessionActive, getSignalingStatus } from "../services/signalingSession.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
 export const adminApiRouter = Router();
@@ -114,8 +115,10 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
 
     if (command === "START_REMOTE_ADMIN") {
       await setRemoteAdminActive(req.params.uid, true);
+      setRemoteSessionActive(req.params.uid, true);
     } else if (command === "STOP_REMOTE_ADMIN") {
       await setRemoteAdminActive(req.params.uid, false);
+      setRemoteSessionActive(req.params.uid, false);
     }
 
     if (!sent) {
@@ -133,6 +136,20 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
   } catch (err) {
     console.error("Command error:", err);
     res.status(500).json({ error: "Failed to send command" });
+  }
+});
+
+adminApiRouter.get("/devices/:uid/signaling", async (req, res) => {
+  try {
+    res.json({
+      signaling: {
+        ...getSignalingStatus(req.params.uid),
+        deviceWsConnected: hub.isDeviceOnline(req.params.uid),
+      },
+    });
+  } catch (err) {
+    console.error("Signaling status error:", err);
+    res.status(500).json({ error: "Failed to get signaling status" });
   }
 });
 

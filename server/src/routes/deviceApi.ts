@@ -8,6 +8,16 @@ import {
   touchLastSeen,
 } from "../services/devices.js";
 import { drainCommands } from "../services/commands.js";
+import {
+  normalizeSignaling,
+  describeSignaling,
+  SIGNALING_HINT_PAYLOAD,
+} from "../services/signalingNormalize.js";
+import {
+  drainPendingToDevice,
+  setRemoteSessionActive,
+} from "../services/signalingSession.js";
+import { hub } from "../ws/hub.js";
 import type { DeviceRegistration, TelemetryPayload, DeviceEventPayload } from "../types.js";
 
 function firstString(...values: unknown[]): string | undefined {
@@ -114,7 +124,12 @@ deviceApiRouter.post("/telemetry", requireDeviceSecret, async (req, res) => {
   try {
     await recordTelemetry(body);
     const commands = await drainCommands(body.uid);
-    res.json({ ok: true, commands });
+    const response: Record<string, unknown> = { ok: true, commands };
+    if (commands.some((c) => c.command === "START_REMOTE_ADMIN")) {
+      setRemoteSessionActive(body.uid, true);
+      response.signaling_hint = SIGNALING_HINT_PAYLOAD;
+    }
+    res.json(response);
   } catch (err) {
     console.error("Telemetry error:", err);
     res.status(500).json({ error: "Failed to record telemetry" });
@@ -159,10 +174,66 @@ deviceApiRouter.get("/commands", requireDeviceSecret, async (req, res) => {
     const uid = req.device!.uid;
     await touchLastSeen(uid);
     const commands = await drainCommands(uid);
-    res.json({ commands });
+    const response: Record<string, unknown> = { commands };
+    if (commands.some((c) => c.command === "START_REMOTE_ADMIN")) {
+      setRemoteSessionActive(uid, true);
+      response.signaling_hint = SIGNALING_HINT_PAYLOAD;
+      if (hub.isDeviceOnline(uid)) {
+        hub.sendSignalingHint(uid);
+      }
+    }
+    res.json(response);
   } catch (err) {
     console.error("Commands poll error:", err);
     res.status(500).json({ error: "Failed to fetch commands" });
+  }
+});
+
+/** HTTP fallback: device polls admin offers/ICE when WebSocket signaling is missed */
+deviceApiRouter.get("/signaling", requireDeviceSecret, async (req, res) => {
+  try {
+    const uid = req.device!.uid;
+    await touchLastSeen(uid);
+    const messages = drainPendingToDevice(uid);
+    res.json({
+      messages,
+      format_hint: SIGNALING_HINT_PAYLOAD.format,
+    });
+  } catch (err) {
+    console.error("Signaling poll error:", err);
+    res.status(500).json({ error: "Failed to fetch signaling messages" });
+  }
+});
+
+/** HTTP fallback: device posts SDP answer and ICE candidates */
+deviceApiRouter.post("/signaling", requireDeviceSecret, async (req, res) => {
+  try {
+    const uid = req.device!.uid;
+    await touchLastSeen(uid);
+    const body = req.body as Record<string, unknown>;
+    const normalized = normalizeSignaling(body);
+
+    if (!normalized) {
+      console.log(
+        `Signaling POST rejected: uid=${uid} body=${JSON.stringify(body).slice(0, 200)}`
+      );
+      res.status(400).json({
+        error: "Not a recognized signaling message",
+        accepted_formats: SIGNALING_HINT_PAYLOAD.format,
+        received_keys: Object.keys(body),
+      });
+      return;
+    }
+
+    hub.ingestDeviceSignaling(uid, normalized);
+    console.log(`Signaling POST accepted: uid=${uid} ${describeSignaling(body)}`);
+    res.json({
+      ok: true,
+      accepted: describeSignaling(body),
+    });
+  } catch (err) {
+    console.error("Signaling post error:", err);
+    res.status(500).json({ error: "Failed to post signaling" });
   }
 });
 

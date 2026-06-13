@@ -372,3 +372,55 @@ button:hover {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
+
+.signaling-diagnostics {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.signaling-diagnostics h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.signaling-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.signaling-stats dt {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.signaling-stats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.signaling-issues {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+  color: var(--warning);
+  font-size: 0.9rem;
+}
+
+.signaling-trace {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.signaling-trace th,
+.signaling-trace td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.signaling-trace th {
+  background: var(--surface-2);
+}

@@ -5,6 +5,15 @@ import type { DeviceRow } from "../types.js";
 import { hub } from "./hub.js";
 import { config } from "../config.js";
 import { drainCommands } from "../services/commands.js";
+import {
+  isSignalingMessage,
+  describeSignaling,
+  SIGNALING_HINT_PAYLOAD,
+} from "../services/signalingNormalize.js";
+import {
+  recordUnrecognizedDeviceMessage,
+  setRemoteSessionActive,
+} from "../services/signalingSession.js";
 
 interface DeviceAuthMessage {
   type: "auth";
@@ -19,28 +28,9 @@ interface AdminAuthMessage {
   token: string;
 }
 
-function isWebRtcSignaling(message: Record<string, unknown>): boolean {
-  if (message.type === "webrtc") return true;
-  if (message.sdp || message.ice || message.candidate) return true;
-  const signal = message.signal as string | undefined;
-  return signal === "offer" || signal === "answer" || signal === "ice";
-}
-
-function normalizeWebRtcMessage(
-  message: Record<string, unknown>
-): Record<string, unknown> {
-  if (message.type === "webrtc") return message;
-  return { type: "webrtc", ...message };
-}
-
-function summarizeDeviceMessage(message: Record<string, unknown>): string {
-  if (message.type === "webrtc" || message.sdp || message.ice) {
-    const sdp = message.sdp as { type?: string } | undefined;
-    if (sdp?.type) return `webrtc sdp=${sdp.type}`;
-    if (message.ice || message.candidate) return "webrtc ice";
-    return "webrtc";
-  }
-  return `type=${String(message.type ?? "unknown")} keys=${Object.keys(message).join(",")}`;
+function previewMessage(message: Record<string, unknown>): string {
+  const text = JSON.stringify(message);
+  return text.length > 180 ? `${text.slice(0, 180)}…` : text;
 }
 
 async function verifyDevice(uid: string, secret: string): Promise<DeviceRow | null> {
@@ -109,6 +99,10 @@ export function attachWebSocketHandlers(
           const pending = await drainCommands(auth.uid);
           for (const command of pending) {
             ws.send(JSON.stringify(command));
+            if (command.command === "START_REMOTE_ADMIN") {
+              setRemoteSessionActive(auth.uid, true);
+              hub.sendSignalingHint(auth.uid);
+            }
           }
           if (pending.length > 0) {
             console.log(`WebSocket delivered ${pending.length} queued command(s) to uid=${auth.uid}`);
@@ -145,16 +139,26 @@ export function attachWebSocketHandlers(
       if (!authenticated) return;
 
       if (path === "/ws/device") {
-        console.log(`Device WS message: ${summarizeDeviceMessage(message)}`);
+        const uid = hub.getClientUid(ws);
+        const summary = describeSignaling(message);
+        console.log(`Device WS message: ${summary}`);
+
+        if (!isSignalingMessage(message) && message.type !== "device_event" && message.type !== "webrtc_ready" && message.type !== "ping") {
+          if (uid) {
+            recordUnrecognizedDeviceMessage(uid, previewMessage(message));
+            hub.sendSignalingStatus(uid);
+          }
+          console.log(`Device WS unrecognized: ${previewMessage(message)}`);
+        }
       }
 
-      if (isWebRtcSignaling(message)) {
-        hub.relaySignaling(ws, normalizeWebRtcMessage(message));
+      if (isSignalingMessage(message)) {
+        hub.relaySignaling(ws, message);
         return;
       }
 
       if (message.type === "device_event") {
-        const clientUid = (message.uid as string) ?? "";
+        const clientUid = (message.uid as string) ?? hub.getClientUid(ws) ?? "";
         hub.relayDeviceEvent(clientUid, message);
         return;
       }
@@ -167,6 +171,7 @@ export function attachWebSocketHandlers(
             event: "WEBRTC_READY",
             uid: client,
           });
+          hub.sendSignalingStatus(client);
         }
         return;
       }

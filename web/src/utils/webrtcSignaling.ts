@@ -18,9 +18,21 @@ export function parseInboundSignaling(msg: Record<string, unknown>): {
 } {
   const result: { sdp?: RTCSessionDescriptionInit; ice?: RTCIceCandidateInit } = {};
 
-  const sdp = msg.sdp as RTCSessionDescriptionInit | undefined;
-  if (sdp?.type && sdp.sdp) {
+  const sdp = msg.sdp as RTCSessionDescriptionInit | string | undefined;
+  if (typeof sdp === "object" && sdp?.type && sdp.sdp) {
     result.sdp = sdp;
+  } else if (typeof sdp === "string") {
+    const type =
+      msg.type === "answer" || msg.signal === "answer"
+        ? "answer"
+        : msg.type === "offer" || msg.signal === "offer"
+          ? "offer"
+          : undefined;
+    if (type) result.sdp = { type, sdp };
+  }
+
+  if (!result.sdp && msg.type === "answer" && typeof msg.sdp === "string") {
+    result.sdp = { type: "answer", sdp: msg.sdp };
   }
 
   const ice =

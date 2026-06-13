@@ -4,6 +4,18 @@ import {
   setDeviceOnline,
   setRemoteAdminActive,
 } from "../services/devices.js";
+import {
+  normalizeSignaling,
+  SIGNALING_HINT_PAYLOAD,
+} from "../services/signalingNormalize.js";
+import type { NormalizedSignaling } from "../services/signalingNormalize.js";
+import {
+  recordAdminToDevice,
+  recordDeviceToAdmin,
+  recordHintSent,
+  setRemoteSessionActive,
+  getSignalingStatus,
+} from "../services/signalingSession.js";
 
 type ClientRole = "device" | "admin";
 
@@ -12,6 +24,13 @@ interface ConnectedClient {
   role: ClientRole;
   uid?: string;
   adminSessionId?: string;
+}
+
+function toWebRtcPayload(message: NormalizedSignaling): Record<string, unknown> {
+  const payload: Record<string, unknown> = { type: "webrtc" };
+  if (message.sdp) payload.sdp = message.sdp;
+  if (message.ice) payload.ice = message.ice;
+  return payload;
 }
 
 export class ConnectionHub {
@@ -41,8 +60,9 @@ export class ConnectionHub {
       }
       this.admins.get(watchUid)!.add(ws);
 
-      const online = this.devices.has(watchUid);
+      const online = this.isDeviceOnline(watchUid);
       ws.send(JSON.stringify({ type: "device_status", uid: watchUid, online }));
+      this.sendSignalingStatus(watchUid);
     }
   }
 
@@ -93,11 +113,24 @@ export class ConnectionHub {
 
     if (command === "START_REMOTE_ADMIN") {
       void setRemoteAdminActive(uid, true);
+      setRemoteSessionActive(uid, true);
+      this.sendSignalingHint(uid);
     } else if (command === "STOP_REMOTE_ADMIN") {
       void setRemoteAdminActive(uid, false);
+      setRemoteSessionActive(uid, false);
     }
 
     return true;
+  }
+
+  sendSignalingHint(uid: string): void {
+    const ws = this.devices.get(uid);
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(JSON.stringify(SIGNALING_HINT_PAYLOAD));
+    recordHintSent(uid);
+    this.sendSignalingStatus(uid);
+    console.log(`Signaling hint sent: uid=${uid}`);
   }
 
   sendControl(uid: string, packet: ControlPacket): boolean {
@@ -110,48 +143,72 @@ export class ConnectionHub {
     return true;
   }
 
-  relaySignaling(
-    from: WebSocket,
-    message: Record<string, unknown>
-  ): void {
+  ingestDeviceSignaling(uid: string, message: NormalizedSignaling): void {
+    recordDeviceToAdmin(uid, message, "http");
+    const payload = toWebRtcPayload(message);
+    this.broadcastToAdmins(uid, payload);
+
+    const kind = message.sdp?.type ?? "ice";
+    console.log(`WebRTC ingest device→admin uid=${uid} kind=${kind} channel=http`);
+
+    this.sendSignalingStatus(uid);
+  }
+
+  relaySignaling(from: WebSocket, message: Record<string, unknown>): void {
     const client = this.clients.get(from);
     if (!client?.uid) return;
 
+    const normalized = normalizeSignaling(message);
+    if (!normalized) return;
+
     const targetUid = message.target_uid as string | undefined;
     const uid = targetUid ?? client.uid;
+    const payload = toWebRtcPayload(normalized);
+    const kind = normalized.sdp?.type ?? "ice";
 
     if (client.role === "admin") {
+      recordAdminToDevice(uid, normalized, "websocket");
+
       const deviceWs = this.devices.get(uid);
       if (deviceWs?.readyState === WebSocket.OPEN) {
-        const relay = { type: "webrtc", ...message };
-        deviceWs.send(JSON.stringify(relay));
-        const sdp = message.sdp as { type?: string } | undefined;
-        const kind = sdp?.type ?? (message.signal as string | undefined) ?? "ice";
+        deviceWs.send(JSON.stringify(payload));
         console.log(`WebRTC relay admin→device uid=${uid} kind=${kind}`);
       } else {
-        console.log(`WebRTC relay dropped: device uid=${uid} not connected`);
+        console.log(
+          `WebRTC relay dropped: device uid=${uid} not connected (queued for GET /api/v1/signaling)`
+        );
       }
+      this.sendSignalingStatus(uid);
       return;
     }
 
     if (client.role === "device") {
+      recordDeviceToAdmin(uid, normalized, "websocket");
+
       const adminSet = this.admins.get(uid);
       if (!adminSet?.size) {
         console.log(`WebRTC relay dropped: no admin watching uid=${uid}`);
       }
-      const sdp = message.sdp as { type?: string } | undefined;
-      const kind = sdp?.type ?? (message.signal as string | undefined) ?? "ice";
       adminSet?.forEach((adminWs) => {
         if (adminWs.readyState === WebSocket.OPEN) {
-          adminWs.send(JSON.stringify({ type: "webrtc", ...message }));
+          adminWs.send(JSON.stringify(payload));
           console.log(`WebRTC relay device→admin uid=${uid} kind=${kind}`);
         }
       });
+      this.sendSignalingStatus(uid);
     }
   }
 
   relayDeviceEvent(uid: string, event: Record<string, unknown>): void {
     this.broadcastToAdmins(uid, { type: "device_event", uid, ...event });
+  }
+
+  sendSignalingStatus(uid: string): void {
+    this.broadcastToAdmins(uid, {
+      type: "signaling_status",
+      ...getSignalingStatus(uid),
+      deviceWsConnected: this.isDeviceOnline(uid),
+    });
   }
 
   private broadcastToAdmins(uid: string, payload: Record<string, unknown>): void {

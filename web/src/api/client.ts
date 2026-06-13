@@ -1,5 +1,5 @@
 import type { User } from "oidc-client-ts";
-import type { ControlPacket, Device, DeviceCommand } from "../types";
+import type { ControlPacket, Device, DeviceCommand, SignalingStatus } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -75,4 +75,15 @@ export async function removeDevice(user: User, uid: string): Promise<void> {
   await apiFetch(`/api/admin/devices/${uid}`, user, {
     method: "DELETE",
   });
+}
+
+export async function fetchSignalingStatus(
+  user: User,
+  uid: string
+): Promise<SignalingStatus> {
+  const data = await apiFetch<{ signaling: SignalingStatus }>(
+    `/api/admin/devices/${uid}/signaling`,
+    user
+  );
+  return data.signaling;
 }

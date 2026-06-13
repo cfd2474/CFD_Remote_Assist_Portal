@@ -5,6 +5,7 @@ import { fetchDevice, removeDevice, sendCommand } from "../api/client";
 import { useAdminWebSocket } from "../hooks/useAdminWebSocket";
 import { DeviceMap } from "../components/DeviceMap";
 import { RemoteViewer } from "../components/RemoteViewer";
+import { SignalingDiagnostics } from "../components/SignalingDiagnostics";
 import type { Device } from "../types";
 
 export function DeviceDetail() {
@@ -18,7 +19,7 @@ export function DeviceDetail() {
   const [remoteActive, setRemoteActive] = useState(false);
   const [removing, setRemoving] = useState(false);
 
-  const { connected, deviceOnline, lastEvent, sendWebRtc, setWebRtcHandler } =
+  const { connected, deviceOnline, lastEvent, signalingStatus, sendWebRtc, setWebRtcHandler } =
     useAdminWebSocket(uid, auth.user ?? null);
 
   const loadDevice = useCallback(async () => {
@@ -239,6 +240,11 @@ export function DeviceDetail() {
           deviceOnline={deviceOnline}
           adminWsConnected={connected}
           deviceStreamReady={deviceStreamReady}
+        />
+        <SignalingDiagnostics
+          uid={device.uid}
+          active={remoteActive}
+          liveStatus={signalingStatus}
         />
       </section>
 

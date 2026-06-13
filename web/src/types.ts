@@ -31,3 +31,25 @@ export interface ControlPacket {
   y2_percent?: number;
   key?: string;
 }
+
+export interface SignalingTraceEntry {
+  at: string;
+  direction: "admin→device" | "device→admin" | "system";
+  kind: string;
+  channel: "websocket" | "http";
+  detail: string;
+}
+
+export interface SignalingStatus {
+  uid: string;
+  remoteActive: boolean;
+  offerSent: boolean;
+  answerReceived: boolean;
+  adminIceCount: number;
+  deviceIceCount: number;
+  deviceHttpPosts: number;
+  lastActivityAt: string | null;
+  trace: SignalingTraceEntry[];
+  issues: string[];
+  deviceWsConnected: boolean;
+}

@@ -395,6 +395,52 @@ Full detail: [android-webrtc-requirements.md](android-webrtc-requirements.md)
 
 Without this message, remote view will fail even if the app shows "remote connected" locally.
 
+### HTTP signaling fallback (recommended)
+
+If WebSocket signaling is unreliable, use these REST endpoints in parallel:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/signaling` | Poll pending admin offers and ICE (same auth header) |
+| `POST /api/v1/signaling` | Post SDP answer and device ICE candidates |
+
+**Poll admin messages** (after `START_REMOTE_ADMIN`):
+
+```
+GET {base}/api/v1/signaling
+X-Connection-Secret: <secret>
+```
+
+Response:
+
+```json
+{
+  "messages": [
+    { "type": "webrtc", "sdp": { "type": "offer", "sdp": "v=0\r\n..." } },
+    { "type": "webrtc", "ice": { "candidate": "...", "sdpMid": "0", "sdpMLineIndex": 0 } }
+  ]
+}
+```
+
+**Post SDP answer**:
+
+```
+POST {base}/api/v1/signaling
+X-Connection-Secret: <secret>
+Content-Type: application/json
+```
+
+```json
+{
+  "type": "webrtc",
+  "sdp": { "type": "answer", "sdp": "v=0\r\n..." }
+}
+```
+
+The server accepts many formats (`type: "answer"` with string `sdp`, nested `payload`, etc.) and normalizes them.
+
+After `START_REMOTE_ADMIN`, the server may also send a `signaling_hint` WebSocket message or include `signaling_hint` in command/telemetry responses with exact expected formats.
+
 ### Signaling format (canonical)
 
 **Session description:**

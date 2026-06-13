@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { User } from "oidc-client-ts";
+import type { SignalingStatus } from "../types";
 
 const WS_BASE = import.meta.env.VITE_WS_BASE ?? "";
 
@@ -8,6 +9,9 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
   const [connected, setConnected] = useState(false);
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [lastEvent, setLastEvent] = useState<Record<string, unknown> | null>(
+    null
+  );
+  const [signalingStatus, setSignalingStatus] = useState<SignalingStatus | null>(
     null
   );
   const onWebRtcRef = useRef<((msg: Record<string, unknown>) => void) | null>(
@@ -65,6 +69,11 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
 
       if (msg.type === "device_event") {
         setLastEvent(msg);
+        return;
+      }
+
+      if (msg.type === "signaling_status") {
+        setSignalingStatus(msg as unknown as SignalingStatus);
       }
     };
 
@@ -85,6 +94,7 @@ export function useAdminWebSocket(uid: string | undefined, user: User | null) {
     connected,
     deviceOnline,
     lastEvent,
+    signalingStatus,
     sendWebRtc,
     setWebRtcHandler,
   };
