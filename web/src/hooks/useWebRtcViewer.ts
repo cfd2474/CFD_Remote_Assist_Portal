@@ -135,11 +135,24 @@ export function useWebRtcViewer({
       clearOfferRetry();
       clearIceWait();
       if (videoRef.current && event.streams[0]) {
-        videoRef.current.srcObject = event.streams[0];
-        void videoRef.current.play().catch(() => undefined);
+        const video = videoRef.current;
+        video.srcObject = event.streams[0];
+        void video.play().catch(() => undefined);
         setStreamActive(true);
         setStatus("streaming");
         setError(null);
+
+        // Detect empty/black tracks (signaling OK but no frames from screen capture)
+        window.setTimeout(() => {
+          if (pcRef.current !== pc || !videoRef.current) return;
+          if (videoRef.current.videoWidth === 0 && videoRef.current.videoHeight === 0) {
+            setStreamActive(false);
+            setStatus("failed");
+            setError(
+              "WebRTC track received but no video frames (0×0). The Android app PeerConnection is up but screen capture is not feeding the video track."
+            );
+          }
+        }, 4000);
       }
     };
 
