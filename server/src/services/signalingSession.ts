@@ -120,13 +120,16 @@ export function setRemoteSessionActive(uid: string, active: boolean): void {
 export function recordAdminToDevice(
   uid: string,
   message: NormalizedSignaling,
-  channel: SignalingChannel
+  channel: SignalingChannel,
+  options?: { queueForPoll?: boolean }
 ): void {
   const session = getOrCreate(uid);
   const kind = kindFromMessage(message);
   if (kind === "offer") session.offerSent = true;
   if (kind === "ice") session.adminIceCount += 1;
-  queuePending(session.pendingToDevice, message);
+  if (options?.queueForPoll !== false) {
+    queuePending(session.pendingToDevice, message);
+  }
   pushTrace(
     uid,
     "admin→device",
@@ -143,7 +146,11 @@ export function recordDeviceToAdmin(
 ): void {
   const session = getOrCreate(uid);
   const kind = kindFromMessage(message);
-  if (kind === "answer") session.answerReceived = true;
+  if (kind === "answer") {
+    session.answerReceived = true;
+    // Prevent HTTP poll from re-delivering a stale offer after negotiation completes.
+    session.pendingToDevice = [];
+  }
   if (kind === "ice") session.deviceIceCount += 1;
   if (channel === "http") session.deviceHttpPosts += 1;
   queuePending(session.pendingToAdmin, message);

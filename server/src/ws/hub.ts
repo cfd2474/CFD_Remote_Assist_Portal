@@ -198,11 +198,15 @@ export class ConnectionHub {
     const kind = normalized.sdp?.type ?? "ice";
 
     if (client.role === "admin") {
-      recordAdminToDevice(uid, normalized, "websocket");
-
       const deviceWs = this.devices.get(uid);
-      if (deviceWs?.readyState === WebSocket.OPEN) {
-        deviceWs.send(JSON.stringify(payload));
+      const wsDelivered = deviceWs?.readyState === WebSocket.OPEN;
+
+      recordAdminToDevice(uid, normalized, "websocket", {
+        queueForPoll: !wsDelivered,
+      });
+
+      if (wsDelivered) {
+        deviceWs!.send(JSON.stringify(payload));
         console.log(`WebRTC relay admin→device uid=${uid} kind=${kind}`);
       } else {
         console.log(
