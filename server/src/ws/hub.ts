@@ -15,6 +15,7 @@ import {
   recordHintSent,
   setRemoteSessionActive,
   getSignalingStatus,
+  getSignalingReplay,
 } from "../services/signalingSession.js";
 
 type ClientRole = "device" | "admin";
@@ -75,6 +76,12 @@ export class ConnectionHub {
       const online = this.isDeviceOnline(watchUid);
       ws.send(JSON.stringify({ type: "device_status", uid: watchUid, online }));
       this.sendSignalingStatus(watchUid);
+
+      for (const message of getSignalingReplay(watchUid)) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(toWebRtcPayload(message)));
+        }
+      }
     }
   }
 

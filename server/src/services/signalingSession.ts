@@ -39,6 +39,7 @@ interface SessionState {
   trace: SignalingTraceEntry[];
   pendingToDevice: NormalizedSignaling[];
   pendingToAdmin: NormalizedSignaling[];
+  lastDeviceAnswer: NormalizedSignaling | null;
 }
 
 const sessions = new Map<string, SessionState>();
@@ -57,6 +58,7 @@ function getOrCreate(uid: string): SessionState {
       trace: [],
       pendingToDevice: [],
       pendingToAdmin: [],
+      lastDeviceAnswer: null,
     };
     sessions.set(uid, session);
   }
@@ -111,6 +113,7 @@ export function setRemoteSessionActive(uid: string, active: boolean): void {
     session.deviceIceCount = 0;
     session.pendingToDevice = [];
     session.pendingToAdmin = [];
+    session.lastDeviceAnswer = null;
     pushTrace(uid, "system", "event", "websocket", "Remote session started");
   } else {
     pushTrace(uid, "system", "event", "websocket", "Remote session stopped");
@@ -148,6 +151,7 @@ export function recordDeviceToAdmin(
   const kind = kindFromMessage(message);
   if (kind === "answer") {
     session.answerReceived = true;
+    session.lastDeviceAnswer = message;
     // Prevent HTTP poll from re-delivering a stale offer after negotiation completes.
     session.pendingToDevice = [];
   }
@@ -191,6 +195,19 @@ export function drainPendingToAdmin(uid: string): NormalizedSignaling[] {
   const pending = [...session.pendingToAdmin];
   session.pendingToAdmin = [];
   return pending;
+}
+
+export function getSignalingReplay(uid: string): NormalizedSignaling[] {
+  const session = getOrCreate(uid);
+  const replay: NormalizedSignaling[] = [];
+  if (session.lastDeviceAnswer) {
+    replay.push(session.lastDeviceAnswer);
+  }
+  for (const message of session.pendingToAdmin) {
+    if (message.sdp?.type === "answer") continue;
+    replay.push(message);
+  }
+  return replay;
 }
 
 export function getSignalingStatus(uid: string): SignalingStatus {

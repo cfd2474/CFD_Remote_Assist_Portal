@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import type { User } from "oidc-client-ts";
+import { fetchSignalingReplay } from "../api/client";
 import {
   outboundIce,
   outboundOffer,
@@ -6,7 +8,13 @@ import {
   isAnswer,
 } from "../utils/webrtcSignaling";
 
-type StreamStatus = "idle" | "waiting" | "negotiating" | "streaming" | "failed";
+type StreamStatus =
+  | "idle"
+  | "waiting"
+  | "negotiating"
+  | "connecting"
+  | "streaming"
+  | "failed";
 
 interface WebRtcOptions {
   sendSignaling: (msg: Record<string, unknown>) => void;
@@ -15,6 +23,10 @@ interface WebRtcOptions {
   signalingReady: boolean;
   /** Set when device posts WEBRTC_READY / REMOTE_SESSION_STARTED */
   deviceStreamReady: boolean;
+  deviceUid?: string;
+  user?: User | null;
+  /** Server-side flag from signaling diagnostics — answer relayed but WS may have missed it */
+  serverAnswerReceived?: boolean;
 }
 
 const OFFER_DELAY_MS = 20_000;
@@ -41,6 +53,9 @@ export function useWebRtcViewer({
   enabled,
   signalingReady,
   deviceStreamReady,
+  deviceUid,
+  user,
+  serverAnswerReceived = false,
 }: WebRtcOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -51,7 +66,10 @@ export function useWebRtcViewer({
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
   const pendingAnswerRef = useRef<RTCSessionDescriptionInit | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const startingSessionRef = useRef(false);
+  const sessionGenRef = useRef(0);
+  const signalingQueueRef = useRef<Promise<void>>(Promise.resolve());
   const startSessionRef = useRef<(() => Promise<void>) | null>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [status, setStatus] = useState<StreamStatus>("idle");
@@ -85,6 +103,24 @@ export function useWebRtcViewer({
     }
   }, []);
 
+  const enqueueSignaling = useCallback((fn: () => Promise<void>) => {
+    signalingQueueRef.current = signalingQueueRef.current
+      .then(fn)
+      .catch((err) => console.warn("Signaling handler error:", err));
+  }, []);
+
+  const flushPendingIce = useCallback(async (pc: RTCPeerConnection) => {
+    const pending = pendingIceRef.current;
+    pendingIceRef.current = [];
+    for (const ice of pending) {
+      try {
+        await pc.addIceCandidate(ice);
+      } catch (err) {
+        console.warn("ICE candidate error:", err);
+      }
+    }
+  }, []);
+
   const cleanup = useCallback(() => {
     clearNegotiationTimeout();
     clearScheduleDelay();
@@ -93,7 +129,9 @@ export function useWebRtcViewer({
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
     pendingAnswerRef.current = null;
+    pendingIceRef.current = [];
     startingSessionRef.current = false;
+    sessionGenRef.current += 1;
     pcRef.current?.close();
     pcRef.current = null;
     if (videoRef.current) {
@@ -103,9 +141,35 @@ export function useWebRtcViewer({
     setStatus("idle");
   }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait]);
 
+  const addRemoteIce = useCallback(
+    async (ice: RTCIceCandidateInit) => {
+      const pc = pcRef.current;
+      if (!pc) return;
+
+      if (!pc.remoteDescription) {
+        pendingIceRef.current.push(ice);
+        return;
+      }
+
+      clearIceWait();
+      try {
+        await pc.addIceCandidate(ice);
+      } catch (err) {
+        console.warn("ICE candidate error:", err);
+      }
+    },
+    [clearIceWait]
+  );
+
   const applyAnswer = useCallback(
     async (sdp: RTCSessionDescriptionInit): Promise<boolean> => {
-      for (let attempt = 0; attempt < 60; attempt++) {
+      const genAtStart = sessionGenRef.current;
+
+      for (let attempt = 0; attempt < 120; attempt++) {
+        if (sessionGenRef.current !== genAtStart) {
+          return false;
+        }
+
         const pc = pcRef.current;
         if (!pc) {
           await new Promise((r) => window.setTimeout(r, 50));
@@ -119,11 +183,13 @@ export function useWebRtcViewer({
             clearOfferRetry();
             clearIceWait();
             setError(null);
+            setStatus("connecting");
             return true;
           }
           if (pc.localDescription?.type !== "offer") {
-            pendingAnswerRef.current = sdp;
-            return false;
+            // Offer not applied yet — wait for startSession instead of dropping the answer.
+            await new Promise((r) => window.setTimeout(r, 50));
+            continue;
           }
         }
 
@@ -140,6 +206,8 @@ export function useWebRtcViewer({
           pendingAnswerRef.current = null;
           clearIceWait();
           setError(null);
+          setStatus("connecting");
+          await flushPendingIce(pc);
           iceWaitRef.current = setTimeout(() => {
             if (pcRef.current !== pc) return;
             if (
@@ -157,6 +225,8 @@ export function useWebRtcViewer({
             receivedAnswerRef.current = true;
             pendingAnswerRef.current = null;
             setError(null);
+            setStatus("connecting");
+            await flushPendingIce(pc);
             return true;
           }
           setStatus("failed");
@@ -170,7 +240,7 @@ export function useWebRtcViewer({
       pendingAnswerRef.current = sdp;
       return false;
     },
-    [clearScheduleDelay, clearOfferRetry, clearIceWait]
+    [clearScheduleDelay, clearOfferRetry, clearIceWait, flushPendingIce]
   );
 
   const startSession = useCallback(async () => {
@@ -180,11 +250,14 @@ export function useWebRtcViewer({
     }
 
     startingSessionRef.current = true;
+    sessionGenRef.current += 1;
+    const gen = sessionGenRef.current;
     clearScheduleDelay();
     clearOfferRetry();
     clearIceWait();
     receivedAnswerRef.current = false;
     pendingAnswerRef.current = null;
+    pendingIceRef.current = [];
     pcRef.current?.close();
     pcRef.current = null;
     if (videoRef.current) {
@@ -264,7 +337,9 @@ export function useWebRtcViewer({
     try {
       pc.addTransceiver("video", { direction: "recvonly" });
       const offer = await pc.createOffer();
+      if (sessionGenRef.current !== gen) return;
       await pc.setLocalDescription(offer);
+      if (sessionGenRef.current !== gen) return;
       sendSignaling(outboundOffer(offer) as Record<string, unknown>);
 
       const pending = pendingAnswerRef.current;
@@ -272,12 +347,16 @@ export function useWebRtcViewer({
         await applyAnswer(pending);
       }
     } catch (err) {
-      clearNegotiationTimeout();
-      clearOfferRetry();
-      setStatus("failed");
-      setError(err instanceof Error ? err.message : "Failed to start WebRTC session");
+      if (sessionGenRef.current === gen) {
+        clearNegotiationTimeout();
+        clearOfferRetry();
+        setStatus("failed");
+        setError(err instanceof Error ? err.message : "Failed to start WebRTC session");
+      }
     } finally {
-      startingSessionRef.current = false;
+      if (sessionGenRef.current === gen) {
+        startingSessionRef.current = false;
+      }
     }
   }, [applyAnswer, clearNegotiationTimeout, clearOfferRetry, clearScheduleDelay, clearIceWait, sendSignaling]);
 
@@ -289,29 +368,64 @@ export function useWebRtcViewer({
       return;
     }
 
-    const handleSignaling = async (msg: Record<string, unknown>) => {
-      const { sdp, ice } = parseInboundSignaling(msg);
+    const handleSignaling = (msg: Record<string, unknown>) => {
+      enqueueSignaling(async () => {
+        const { sdp, ice } = parseInboundSignaling(msg);
 
-      if (sdp && isAnswer(sdp)) {
-        await applyAnswer(sdp);
-        return;
-      }
-
-      const pc = pcRef.current;
-      if (!pc) return;
-
-      if (ice) {
-        clearIceWait();
-        try {
-          await pc.addIceCandidate(ice);
-        } catch (err) {
-          console.warn("ICE candidate error:", err);
+        if (sdp && isAnswer(sdp)) {
+          await applyAnswer(sdp);
+          return;
         }
-      }
+
+        if (ice) {
+          await addRemoteIce(ice);
+        }
+      });
     };
 
     onSignaling(handleSignaling);
-  }, [enabled, cleanup, onSignaling, applyAnswer]);
+  }, [enabled, cleanup, onSignaling, applyAnswer, addRemoteIce, enqueueSignaling]);
+
+  useEffect(() => {
+    if (!enabled || !deviceUid || !user) return;
+    if (receivedAnswerRef.current || streamActive) return;
+    if (status !== "negotiating" && !serverAnswerReceived) return;
+
+    const pollReplay = () => {
+      if (receivedAnswerRef.current) return;
+      void fetchSignalingReplay(user, deviceUid)
+        .then(({ messages }) => {
+          for (const msg of messages) {
+            enqueueSignaling(async () => {
+              const { sdp, ice } = parseInboundSignaling(msg);
+              if (sdp && isAnswer(sdp)) {
+                await applyAnswer(sdp);
+              } else if (ice) {
+                await addRemoteIce(ice);
+              }
+            });
+          }
+        })
+        .catch((err) => console.warn("Signaling replay poll failed:", err));
+    };
+
+    if (serverAnswerReceived) {
+      pollReplay();
+    }
+
+    const interval = window.setInterval(pollReplay, 2_000);
+    return () => window.clearInterval(interval);
+  }, [
+    enabled,
+    deviceUid,
+    user,
+    serverAnswerReceived,
+    status,
+    streamActive,
+    applyAnswer,
+    addRemoteIce,
+    enqueueSignaling,
+  ]);
 
   const scheduleOffer = useCallback(() => {
     clearScheduleDelay();
@@ -320,7 +434,6 @@ export function useWebRtcViewer({
     offerAttemptRef.current = 0;
     setStatus("waiting");
 
-    // Wait for webrtc_ready — deviceStreamReady effect sends the offer after warmup.
     if (deviceStreamReady) return;
 
     scheduleDelayRef.current = setTimeout(() => {
@@ -352,7 +465,6 @@ export function useWebRtcViewer({
     }
 
     if (!signalingReady) {
-      // Ignore brief device WebSocket reconnects during an active negotiation.
       if (receivedAnswerRef.current || streamActive) return;
       autoStartedRef.current = false;
       return;

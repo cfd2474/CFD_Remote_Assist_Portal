@@ -13,6 +13,7 @@ interface RemoteViewerProps {
   deviceReconnecting?: boolean;
   adminWsConnected: boolean;
   deviceStreamReady: boolean;
+  serverAnswerReceived?: boolean;
 }
 
 function statusLabel(
@@ -27,6 +28,7 @@ function statusLabel(
   if (!deviceOnline) return "Device offline (WebSocket)";
   if (status === "waiting") return deviceStreamReady ? "Capture started — preparing offer…" : "Waiting for screen capture permission on device…";
   if (status === "negotiating") return "Offer sent — waiting for SDP answer…";
+  if (status === "connecting") return "Answer received — establishing video stream…";
   if (status === "failed") return "Stream failed";
   return "Waiting for stream";
 }
@@ -41,6 +43,7 @@ export function RemoteViewer({
   deviceReconnecting = false,
   adminWsConnected,
   deviceStreamReady,
+  serverAnswerReceived = false,
 }: RemoteViewerProps) {
   const { videoRef, streamActive, status, error, startSession } = useWebRtcViewer({
     sendSignaling: sendWebRtc,
@@ -48,6 +51,9 @@ export function RemoteViewer({
     enabled: active,
     signalingReady: active && deviceOnline && adminWsConnected,
     deviceStreamReady,
+    deviceUid: uid,
+    user,
+    serverAnswerReceived,
   });
 
   const {

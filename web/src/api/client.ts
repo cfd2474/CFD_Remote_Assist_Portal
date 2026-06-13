@@ -87,3 +87,13 @@ export async function fetchSignalingStatus(
   );
   return data.signaling;
 }
+
+export async function fetchSignalingReplay(
+  user: User,
+  uid: string
+): Promise<{ messages: Record<string, unknown>[] }> {
+  return apiFetch<{ messages: Record<string, unknown>[] }>(
+    `/api/admin/devices/${uid}/signaling/replay`,
+    user
+  );
+}

@@ -276,6 +276,7 @@ export function DeviceDetail() {
           deviceReconnecting={deviceReconnecting}
           adminWsConnected={connected}
           deviceStreamReady={deviceStreamReady}
+          serverAnswerReceived={signalingStatus?.answerReceived ?? false}
         />
         <SignalingDiagnostics
           uid={device.uid}

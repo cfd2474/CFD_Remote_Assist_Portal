@@ -10,7 +10,7 @@ import {
 } from "../services/devices.js";
 import { hub } from "../ws/hub.js";
 import { queueCommand } from "../services/commands.js";
-import { setRemoteSessionActive, getSignalingStatus } from "../services/signalingSession.js";
+import { setRemoteSessionActive, getSignalingStatus, getSignalingReplay } from "../services/signalingSession.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
 export const adminApiRouter = Router();
@@ -150,6 +150,21 @@ adminApiRouter.get("/devices/:uid/signaling", async (req, res) => {
   } catch (err) {
     console.error("Signaling status error:", err);
     res.status(500).json({ error: "Failed to get signaling status" });
+  }
+});
+
+adminApiRouter.get("/devices/:uid/signaling/replay", async (req, res) => {
+  try {
+    const messages = getSignalingReplay(req.params.uid).map((message) => {
+      const payload: Record<string, unknown> = { type: "webrtc" };
+      if (message.sdp) payload.sdp = message.sdp;
+      if (message.ice) payload.ice = message.ice;
+      return payload;
+    });
+    res.json({ messages });
+  } catch (err) {
+    console.error("Signaling replay error:", err);
+    res.status(500).json({ error: "Failed to get signaling replay" });
   }
 });
 
