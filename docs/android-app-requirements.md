@@ -535,6 +535,17 @@ During an active remote session, the admin may send touch packets on the device 
 }
 ```
 
+**Long-press (right-click on portal):**
+
+```json
+{
+  "type": "control",
+  "action": "LONG_PRESS",
+  "x_percent": 0.52,
+  "y_percent": 0.41
+}
+```
+
 **Key:**
 
 ```json

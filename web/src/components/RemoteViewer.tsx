@@ -1,6 +1,5 @@
-import { useCallback } from "react";
 import type { User } from "oidc-client-ts";
-import { sendControl } from "../api/client";
+import { useRemoteVideoControl } from "../hooks/useRemoteVideoControl";
 import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
 
 interface RemoteViewerProps {
@@ -19,12 +18,13 @@ function statusLabel(
   status: string,
   streamActive: boolean,
   deviceOnline: boolean,
-  deviceReconnecting: boolean
+  deviceReconnecting: boolean,
+  deviceStreamReady: boolean
 ): string {
   if (streamActive) return "Streaming";
   if (deviceReconnecting) return "Device reconnecting WebSocket…";
   if (!deviceOnline) return "Device offline (WebSocket)";
-  if (status === "waiting") return "Waiting for device screen capture…";
+  if (status === "waiting") return deviceStreamReady ? "Capture started — preparing offer…" : "Waiting for screen capture permission on device…";
   if (status === "negotiating") return "Offer sent — waiting for SDP answer…";
   if (status === "failed") return "Stream failed";
   return "Waiting for stream";
@@ -49,22 +49,11 @@ export function RemoteViewer({
     deviceStreamReady,
   });
 
-  const handleClick = useCallback(
-    async (e: React.MouseEvent<HTMLVideoElement>) => {
-      if (!streamActive) return;
-
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x_percent = (e.clientX - rect.left) / rect.width;
-      const y_percent = (e.clientY - rect.top) / rect.height;
-
-      await sendControl(user, uid, {
-        action: "CLICK",
-        x_percent: Math.min(1, Math.max(0, x_percent)),
-        y_percent: Math.min(1, Math.max(0, y_percent)),
-      });
-    },
-    [uid, user, streamActive]
-  );
+  const controlHandlers = useRemoteVideoControl({
+    uid,
+    user,
+    enabled: streamActive,
+  });
 
   if (!active) {
     return (
@@ -82,7 +71,7 @@ export function RemoteViewer({
           {streamActive ? "Restart stream" : "Retry WebRTC"}
         </button>
         <span className={streamActive ? "status-ok" : "status-warn"}>
-          {statusLabel(status, streamActive, deviceOnline, deviceReconnecting)}
+          {statusLabel(status, streamActive, deviceOnline, deviceReconnecting, deviceStreamReady)}
         </span>
       </div>
 
@@ -99,19 +88,27 @@ export function RemoteViewer({
         </p>
       )}
 
-      {error && <p className="remote-error">{error}</p>}
+      {error && status === "failed" && <p className="remote-error">{error}</p>}
 
-      <video
-        ref={videoRef}
-        className="remote-video"
-        autoPlay
-        playsInline
-        muted
-        onClick={handleClick}
-      />
+      <div className="remote-video-wrap">
+        <video
+          ref={videoRef}
+          className="remote-video"
+          autoPlay
+          playsInline
+          muted
+        />
+        {streamActive && (
+          <div
+            className="remote-video-input"
+            aria-label="Remote touch control"
+            {...controlHandlers}
+          />
+        )}
+      </div>
       <p className="remote-hint">
         {streamActive
-          ? "Click on the video to send touch events to the device."
+          ? "Click, drag, or swipe on the video to control the device. Right-click for long-press."
           : "The portal sends a WebRTC offer after Connect. The Android app must capture the screen and reply with an SDP answer on the device WebSocket. Optionally send { \"type\": \"webrtc_ready\" } when capture has started."}
       </p>
     </div>

@@ -289,14 +289,28 @@ button:hover {
   gap: 1rem;
 }
 
-.remote-video {
+.remote-video-wrap {
+  position: relative;
   width: 100%;
   max-width: 400px;
+}
+
+.remote-video {
+  display: block;
+  width: 100%;
   aspect-ratio: 9 / 16;
   background: #000;
   border-radius: 8px;
-  cursor: crosshair;
   object-fit: contain;
+}
+
+.remote-video-input {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
 }
 
 .remote-hint {

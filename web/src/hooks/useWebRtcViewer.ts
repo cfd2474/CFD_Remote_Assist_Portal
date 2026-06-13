@@ -17,8 +17,9 @@ interface WebRtcOptions {
   deviceStreamReady: boolean;
 }
 
-const OFFER_DELAY_MS = 3_000;
-const OFFER_RETRY_MS = 10_000;
+const OFFER_DELAY_MS = 20_000;
+const CAPTURE_WARMUP_MS = 3_000;
+const OFFER_RETRY_MS = 15_000;
 const MAX_OFFER_ATTEMPTS = 4;
 const NEGOTIATION_TIMEOUT_MS = 45_000;
 
@@ -152,7 +153,7 @@ export function useWebRtcViewer({
               "WebRTC track received but no video frames (0×0). The Android app PeerConnection is up but screen capture is not feeding the video track."
             );
           }
-        }, 4000);
+        }, 12_000);
       }
     };
 
@@ -162,8 +163,18 @@ export function useWebRtcViewer({
       }
     };
 
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+        clearIceWait();
+        setError(null);
+      }
+    };
+
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed") {
+      if (pc.connectionState === "connected") {
+        clearIceWait();
+        setError(null);
+      } else if (pc.connectionState === "failed") {
         clearNegotiationTimeout();
         clearOfferRetry();
         setStreamActive(false);
@@ -201,20 +212,35 @@ export function useWebRtcViewer({
       const { sdp, ice } = parseInboundSignaling(msg);
 
       if (sdp && isAnswer(sdp)) {
-        receivedAnswerRef.current = true;
+        if (pc.signalingState !== "have-local-offer") {
+          // Duplicate or late answer after negotiation finished — ignore.
+          return;
+        }
+
         clearScheduleDelay();
         clearOfferRetry();
         try {
           await pc.setRemoteDescription(sdp);
+          receivedAnswerRef.current = true;
           clearIceWait();
+          setError(null);
           iceWaitRef.current = setTimeout(() => {
             if (pcRef.current !== pc) return;
-            if (pc.connectionState !== "connected") {
+            if (
+              pc.connectionState !== "connected" &&
+              pc.iceConnectionState !== "connected" &&
+              pc.iceConnectionState !== "completed"
+            ) {
               setError(NO_ICE_ERROR);
               setStatus("failed");
             }
           }, ICE_WAIT_MS);
         } catch (err) {
+          if (pc.remoteDescription?.type === "answer") {
+            receivedAnswerRef.current = true;
+            setError(null);
+            return;
+          }
           setStatus("failed");
           setError(
             err instanceof Error ? err.message : "Invalid WebRTC answer from device"
@@ -242,7 +268,7 @@ export function useWebRtcViewer({
     clearIceWait();
     offerAttemptRef.current = 0;
 
-    const delay = deviceStreamReady ? 0 : OFFER_DELAY_MS;
+    const delay = deviceStreamReady ? CAPTURE_WARMUP_MS : OFFER_DELAY_MS;
     setStatus("waiting");
 
     scheduleDelayRef.current = setTimeout(() => {
@@ -290,8 +316,13 @@ export function useWebRtcViewer({
     if (!enabled || !signalingReady || !deviceStreamReady || streamActive) return;
     if (receivedAnswerRef.current) return;
     clearScheduleDelay();
-    void startSession();
-  }, [deviceStreamReady, enabled, signalingReady, startSession, streamActive, clearScheduleDelay]);
+    clearOfferRetry();
+    setStatus("waiting");
+    const warmup = window.setTimeout(() => {
+      if (!receivedAnswerRef.current) void startSession();
+    }, CAPTURE_WARMUP_MS);
+    return () => window.clearTimeout(warmup);
+  }, [deviceStreamReady, enabled, signalingReady, startSession, streamActive, clearScheduleDelay, clearOfferRetry]);
 
   useEffect(() => cleanup, [cleanup]);
 

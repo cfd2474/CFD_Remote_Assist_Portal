@@ -11,19 +11,46 @@ Full integration spec: [android-app-requirements.md](android-app-requirements.md
 
 ---
 
-## Executive summary (updated 2026-06-13 19:43 UTC)
+## Executive summary (updated 2026-06-13 19:53 UTC)
 
 | Layer | Status |
 |-------|--------|
 | Device registration / REST | Working |
 | Command delivery (`START_REMOTE_ADMIN`) | Working |
+| MediaProjection wait before `webrtc_ready` | **Improved** (~3s after START) |
 | SDP answer (device → server → admin) | **Working** |
-| WebRTC `ontrack` / portal shows "Streaming" | **Partially** — track arrives but **black screen (0×0 frames)** |
 | **Device ICE (trickle)** | **Still not observed** in server logs |
-| **Screen capture → video track** | **NOT WORKING — current blocker** |
-| **WebSocket stability during session** | **Still reconnecting ~1s after answer** |
+| **Screen capture → video frames** | **Still not working** (black / 0×0) |
+| **WebSocket stability** | **Still reconnecting ~1.5s after answer** |
 
-**Latest failure mode:** Signaling completes enough for a media track to arrive, but **MediaProjection is not producing frames** into the WebRTC video track. Portal may briefly show "Streaming" with a black screen.
+**Latest failure mode:** App waits for permission then sends `webrtc_ready` + answer quickly (~150ms), but **no video frames** reach the browser. Likely answering **before** `startCapture()` produces frames, then **WebSocket reconnect** disrupts the session.
+
+---
+
+## Latest attempt timeline (2026-06-13 19:53 UTC)
+
+| Time (UTC) | Δ from START | Event |
+|------------|--------------|-------|
+| 19:53:41.190 | 0s | `START_REMOTE_ADMIN` |
+| 19:53:44.088 | **+2.9s** | `webrtc_ready` (after system screen-share permission) |
+| 19:53:44.172 | +2.98s | Admin **offer** + ICE |
+| 19:53:44.243 | +3.05s | Device **SDP answer** (only **155ms** after webrtc_ready) |
+| 19:53:45.635 | +4.4s | **New WebSocket connection** |
+| 19:54:30+ | — | Keepalive pings only; no STOP logged in window |
+
+**Still absent:** any `device→admin kind=ice` trickle messages.
+
+### Timing interpretation (MediaProjection)
+
+The **2.9s gap** between START and `webrtc_ready` matches the system screen-share permission dialog — good progress.
+
+The problem is the app sends `webrtc_ready` and the SDP **answer 155ms later**. That is too fast to:
+
+1. Create VirtualDisplay + wire to WebRTC `VideoSource`
+2. Call `startCapture(width, height, fps)`
+3. Receive the first encoded frame
+
+**`webrtc_ready` must mean "first frame captured", not "permission granted" or "PeerConnection created".**
 
 ---
 
@@ -74,9 +101,35 @@ Portal diagnostics for this session would show:
 
 ## Required fix #1B — Screen capture must feed the video track (CURRENT BLOCKER)
 
-Portal receives a WebRTC **track** (`ontrack` fires → "Streaming") but **video dimensions stay 0×0** → black screen.
+### Correct sequence (respect MediaProjection delay)
 
-This means PeerConnection negotiation succeeded (possibly with ICE embedded inside the SDP answer), but **no encoded video frames** are flowing from MediaProjection.
+```
+START_REMOTE_ADMIN received
+    ↓
+Show system screen-share permission dialog (user may take 2–10+ seconds)
+    ↓
+onActivityResult / MediaProjection granted
+    ↓
+Create VideoSource + ScreenCapturer + VirtualDisplay
+    ↓
+addTrack(videoTrack) on PeerConnection  ← BEFORE createAnswer
+    ↓
+startCapture(width, height, 30)
+    ↓
+Wait for FIRST FRAME (capturerObserver.onFirstFrameAvailable or frame callback)
+    ↓
+Send { type: "webrtc_ready" }   ← NOT before this point
+    ↓
+Receive offer → setRemoteDescription → createAnswer → send answer
+    ↓
+Send trickle ICE candidates as they are gathered
+    ↓
+Keep same WebSocket open — do NOT reconnect
+```
+
+**Wrong today:** `webrtc_ready` at +2.9s, answer at +3.05s → permission just granted, capture not running yet.
+
+Portal now waits **3 seconds after `webrtc_ready`** before sending the offer, and allows **12 seconds** for frames to appear — but the app must still send `webrtc_ready` only after capture is producing frames.
 
 ### Checklist
 

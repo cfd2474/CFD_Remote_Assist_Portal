@@ -24,7 +24,7 @@ export type DeviceCommand =
   | "STOP_REMOTE_ADMIN";
 
 export interface ControlPacket {
-  action: "CLICK" | "SWIPE" | "KEY";
+  action: "CLICK" | "SWIPE" | "LONG_PRESS" | "KEY";
   x_percent?: number;
   y_percent?: number;
   x2_percent?: number;
