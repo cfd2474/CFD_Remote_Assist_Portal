@@ -149,17 +149,6 @@ export function useRemoteVideoControl({
   }, [enabled, locked]);
 
   useEffect(() => {
-    if (!enabled || !locked) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [enabled, locked]);
-
-  useEffect(() => {
     if (!enabled) return;
 
     const blockScroll = (e: Event) => {
@@ -169,11 +158,9 @@ export function useRemoteVideoControl({
 
     document.addEventListener("touchmove", blockScroll, { passive: false });
     document.addEventListener("wheel", blockScroll, { passive: false });
-    document.addEventListener("pointermove", blockScroll, { passive: false });
     return () => {
       document.removeEventListener("touchmove", blockScroll);
       document.removeEventListener("wheel", blockScroll);
-      document.removeEventListener("pointermove", blockScroll);
     };
   }, [enabled]);
 
