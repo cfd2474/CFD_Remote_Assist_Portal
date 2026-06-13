@@ -34,6 +34,16 @@ export function DeviceDetail() {
     }
   }, [auth.user, uid]);
 
+  const refreshDeviceMeta = useCallback(async () => {
+    if (!auth.user || !uid) return;
+    try {
+      const data = await fetchDevice(auth.user, uid);
+      setDevice(data);
+    } catch {
+      // Keep existing device card data if a background refresh fails.
+    }
+  }, [auth.user, uid]);
+
   useEffect(() => {
     void loadDevice();
     const interval = setInterval(() => void loadDevice(), 10000);
@@ -54,7 +64,7 @@ export function DeviceDetail() {
           ? `Command queued: ${command} (device will receive on next check-in)`
           : `Command sent: ${command}`
       );
-      void loadDevice();
+      void refreshDeviceMeta();
     } catch (err) {
       setActionMessage(err instanceof Error ? err.message : "Command failed");
     }

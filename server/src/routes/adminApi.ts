@@ -6,6 +6,7 @@ import {
   getTelemetryHistory,
   getDeviceEvents,
   deleteDevice,
+  setRemoteAdminActive,
 } from "../services/devices.js";
 import { hub } from "../ws/hub.js";
 import { queueCommand } from "../services/commands.js";
@@ -110,6 +111,12 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
       command,
       device.connection_secret
     );
+
+    if (command === "START_REMOTE_ADMIN") {
+      await setRemoteAdminActive(req.params.uid, true);
+    } else if (command === "STOP_REMOTE_ADMIN") {
+      await setRemoteAdminActive(req.params.uid, false);
+    }
 
     if (!sent) {
       await queueCommand(req.params.uid, command, device.connection_secret);
