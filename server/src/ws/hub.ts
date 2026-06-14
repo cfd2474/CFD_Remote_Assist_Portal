@@ -153,7 +153,7 @@ export class ConnectionHub {
       void setRemoteAdminActive(uid, true);
       setRemoteSessionActive(uid, true);
       this.sendSignalingHint(uid);
-    } else if (command === "STOP_REMOTE_ADMIN") {
+    } else if (command === "STOP_REMOTE_ADMIN" || command === "LOCK_DEVICE") {
       void setRemoteAdminActive(uid, false);
       setRemoteSessionActive(uid, false);
     }

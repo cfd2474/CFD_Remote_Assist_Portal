@@ -133,6 +133,7 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
     "REQUEST_LOCATION",
     "START_REMOTE_ADMIN",
     "STOP_REMOTE_ADMIN",
+    "LOCK_DEVICE",
   ];
 
   if (!valid.includes(command)) {
@@ -156,7 +157,7 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
     if (command === "START_REMOTE_ADMIN") {
       await setRemoteAdminActive(req.params.uid, true);
       setRemoteSessionActive(req.params.uid, true);
-    } else if (command === "STOP_REMOTE_ADMIN") {
+    } else if (command === "STOP_REMOTE_ADMIN" || command === "LOCK_DEVICE") {
       await setRemoteAdminActive(req.params.uid, false);
       setRemoteSessionActive(req.params.uid, false);
     }

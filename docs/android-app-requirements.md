@@ -351,6 +351,7 @@ Verify `connection_secret` matches the device's stored secret before acting (def
 | `REQUEST_LOCATION` | Obtain current GPS fix; POST telemetry with lat/lon |
 | `START_REMOTE_ADMIN` | Start screen capture + WebRTC session (§8) |
 | `STOP_REMOTE_ADMIN` | Tear down WebRTC and screen capture immediately |
+| `LOCK_DEVICE` | Tear down remote assist if active, then lock the device screen |
 
 After handling any command, POST an event if useful for admin visibility:
 

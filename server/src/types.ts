@@ -44,7 +44,8 @@ export type DeviceCommand =
   | "TRIGGER_PING"
   | "REQUEST_LOCATION"
   | "START_REMOTE_ADMIN"
-  | "STOP_REMOTE_ADMIN";
+  | "STOP_REMOTE_ADMIN"
+  | "LOCK_DEVICE";
 
 export interface ControlPacket {
   action: "CLICK" | "SWIPE" | "LONG_PRESS" | "KEY";

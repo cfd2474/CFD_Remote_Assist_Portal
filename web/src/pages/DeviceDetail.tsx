@@ -4,8 +4,9 @@ import { useAuth } from "react-oidc-context";
 import { fetchDevice, removeDevice, sendCommand } from "../api/client";
 import { useAdminWebSocket } from "../hooks/useAdminWebSocket";
 import { DeviceLocationPanel } from "../components/DeviceLocationPanel";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { RemoteViewer } from "../components/RemoteViewer";
-import type { Device } from "../types";
+import type { Device, DeviceCommand } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
 import { formatDeviceModel } from "../utils/deviceModelNames";
 import { formatPhoneNumber } from "../utils/formatPhoneNumber";
@@ -24,6 +25,8 @@ export function DeviceDetail() {
   const [webrtcReadySessionId, setWebrtcReadySessionId] = useState(0);
   const remoteSessionIdRef = useRef(0);
   const [removing, setRemoving] = useState(false);
+  const [lockModalOpen, setLockModalOpen] = useState(false);
+  const [locking, setLocking] = useState(false);
   const [streamLayoutHint, setStreamLayoutHint] = useState<StreamDimensions | null>(
     null
   );
@@ -82,9 +85,7 @@ export function DeviceDetail() {
     return () => clearInterval(interval);
   }, [loadDevice]);
 
-  const runCommand = async (
-    command: "TRIGGER_PING" | "REQUEST_LOCATION" | "START_REMOTE_ADMIN" | "STOP_REMOTE_ADMIN"
-  ) => {
+  const runCommand = async (command: DeviceCommand) => {
     if (!auth.user || !uid) return;
     setActionMessage(null);
     try {
@@ -104,6 +105,33 @@ export function DeviceDetail() {
       void refreshDeviceMeta();
     } catch (err) {
       setActionMessage(err instanceof Error ? err.message : "Command failed");
+    }
+  };
+
+  const handleLockDevice = async () => {
+    if (!auth.user || !uid) return;
+
+    setLockModalOpen(false);
+    setLocking(true);
+    setActionMessage(null);
+
+    try {
+      if (remoteActive) {
+        await sendCommand(auth.user, uid, "STOP_REMOTE_ADMIN");
+        setRemoteActive(false);
+      }
+
+      const result = await sendCommand(auth.user, uid, "LOCK_DEVICE");
+      setActionMessage(
+        result.delivery === "queued"
+          ? "Lock command queued — device will lock on next poll. Remote assist has been stopped."
+          : "Lock command sent. Remote assist has been stopped."
+      );
+      void refreshDeviceMeta();
+    } catch (err) {
+      setActionMessage(err instanceof Error ? err.message : "Lock command failed");
+    } finally {
+      setLocking(false);
     }
   };
 
@@ -200,8 +228,30 @@ export function DeviceDetail() {
               Disconnect
             </button>
           )}
+          <button
+            type="button"
+            className="btn-warning"
+            disabled={locking}
+            onClick={() => setLockModalOpen(true)}
+          >
+            Lock device
+          </button>
         </div>
       </section>
+
+      <ConfirmModal
+        open={lockModalOpen}
+        title="Lock device?"
+        confirmLabel="Lock device"
+        confirmClassName="btn-warning"
+        onConfirm={() => void handleLockDevice()}
+        onCancel={() => setLockModalOpen(false)}
+      >
+        <p>
+          This will terminate any active remote assist session. Remote assist
+          will not be available until the phone is unlocked manually.
+        </p>
+      </ConfirmModal>
 
       <div className="detail-grid">
         <section className="panel">

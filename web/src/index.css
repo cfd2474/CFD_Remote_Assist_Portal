@@ -63,6 +63,22 @@ button:hover {
   border-color: var(--danger);
 }
 
+.btn-warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #1a1200;
+}
+
+.btn-warning:hover {
+  background: #e6900a;
+  border-color: #e6900a;
+}
+
+.btn-warning:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .panel-danger {
   border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
 }
@@ -659,4 +675,41 @@ button:hover {
 
 .no-records {
   text-transform: lowercase;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modal-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.modal-dialog h3 {
+  margin: 0 0 0.75rem;
+}
+
+.modal-body p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
