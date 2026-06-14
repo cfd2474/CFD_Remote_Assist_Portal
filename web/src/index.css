@@ -1,12 +1,13 @@
 :root {
-  --bg: #0f1419;
-  --surface: #1a2332;
-  --surface-2: #243044;
-  --border: #2d3a4f;
-  --text: #e8edf4;
-  --text-muted: #8b9cb3;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
+  --brand-bg: #000d26;
+  --bg: #000d26;
+  --surface: #051528;
+  --surface-2: #0a1e3d;
+  --border: #14325c;
+  --text: #eef4fc;
+  --text-muted: #6d8fb5;
+  --accent: #01d2fd;
+  --accent-hover: #00b8e0;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -46,16 +47,18 @@ button {
 }
 
 button:hover {
-  background: #2f3f56;
+  background: color-mix(in srgb, var(--surface-2) 85%, var(--accent) 15%);
 }
 
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
+  color: #001428;
 }
 
 .btn-primary:hover {
   background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .btn-danger {
@@ -99,14 +102,14 @@ button:hover {
 }
 
 .app-header {
-  --header-height: 4.8125rem;
+  --header-height: 5.25rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   min-height: var(--header-height);
   padding: 0 1.5rem;
   box-sizing: border-box;
-  background: var(--surface);
+  background: var(--brand-bg);
   border-bottom: 1px solid var(--border);
 }
 
