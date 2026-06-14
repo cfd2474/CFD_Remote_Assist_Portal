@@ -10,6 +10,7 @@ export interface Device {
   last_seen_at: string | null;
   last_lat: number | null;
   last_lon: number | null;
+  last_location_accuracy_m: number | null;
   last_battery: number | null;
   last_is_charging: boolean | null;
   last_telemetry_at: string | null;

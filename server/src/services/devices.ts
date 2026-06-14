@@ -87,15 +87,17 @@ export async function recordTelemetry(data: TelemetryPayload): Promise<void> {
     `UPDATE devices SET
       last_lat = COALESCE($2, last_lat),
       last_lon = COALESCE($3, last_lon),
-      last_battery = COALESCE($4, last_battery),
-      last_is_charging = COALESCE($5, last_is_charging),
-      last_telemetry_at = $6,
+      last_location_accuracy_m = COALESCE($4, last_location_accuracy_m),
+      last_battery = COALESCE($5, last_battery),
+      last_is_charging = COALESCE($6, last_is_charging),
+      last_telemetry_at = $7,
       last_seen_at = NOW()
     WHERE uid = $1`,
     [
       data.uid,
       data.lat ?? null,
       data.lon ?? null,
+      data.accuracy_m ?? null,
       data.battery ?? null,
       data.is_charging ?? null,
       recordedAt,
@@ -103,12 +105,13 @@ export async function recordTelemetry(data: TelemetryPayload): Promise<void> {
   );
 
   await pool.query(
-    `INSERT INTO telemetry_history (uid, lat, lon, battery, is_charging, recorded_at)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO telemetry_history (uid, lat, lon, accuracy_m, battery, is_charging, recorded_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [
       data.uid,
       data.lat ?? null,
       data.lon ?? null,
+      data.accuracy_m ?? null,
       data.battery ?? null,
       data.is_charging ?? null,
       recordedAt,
@@ -192,7 +195,7 @@ export async function getTelemetryHistory(
   limit = 50
 ): Promise<unknown[]> {
   const result = await pool.query(
-    `SELECT lat, lon, battery, is_charging, recorded_at
+    `SELECT lat, lon, accuracy_m, battery, is_charging, recorded_at
      FROM telemetry_history WHERE uid = $1
      ORDER BY recorded_at DESC LIMIT $2`,
     [uid, limit]

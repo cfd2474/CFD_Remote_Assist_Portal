@@ -97,3 +97,18 @@ export async function fetchSignalingReplay(
     user
   );
 }
+
+export async function fetchReverseGeocode(
+  user: User,
+  lat: number,
+  lon: number
+): Promise<{ address: string }> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+  });
+  return apiFetch<{ address: string }>(
+    `/api/admin/geocode/reverse?${params}`,
+    user
+  );
+}

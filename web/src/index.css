@@ -257,6 +257,10 @@ button:hover {
   word-break: break-all;
 }
 
+.location-info {
+  margin-bottom: 0;
+}
+
 .device-map {
   height: 280px;
   border-radius: 8px;

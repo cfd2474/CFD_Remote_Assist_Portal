@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS pending_commands (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pending_commands_uid ON pending_commands(uid, created_at ASC);
+
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_location_accuracy_m REAL;
+ALTER TABLE telemetry_history ADD COLUMN IF NOT EXISTS accuracy_m REAL;
 `;
 
 async function migrate() {

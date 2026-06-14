@@ -11,6 +11,7 @@ import {
 import { hub } from "../ws/hub.js";
 import { queueCommand } from "../services/commands.js";
 import { setRemoteSessionActive, getSignalingStatus, getSignalingReplay } from "../services/signalingSession.js";
+import { reverseGeocode } from "../services/geocode.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
 export const adminApiRouter = Router();
@@ -32,6 +33,7 @@ adminApiRouter.get("/devices", async (_req, res) => {
       last_seen_at: d.last_seen_at,
       last_lat: d.last_lat,
       last_lon: d.last_lon,
+      last_location_accuracy_m: d.last_location_accuracy_m,
       last_battery: d.last_battery,
       last_is_charging: d.last_is_charging,
       last_telemetry_at: d.last_telemetry_at,
@@ -208,6 +210,32 @@ adminApiRouter.delete("/devices/:uid", async (req, res) => {
   } catch (err) {
     console.error("Delete device error:", err);
     res.status(500).json({ error: "Failed to remove device" });
+  }
+});
+
+adminApiRouter.get("/geocode/reverse", async (req, res) => {
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    res.status(400).json({ error: "Invalid lat or lon" });
+    return;
+  }
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    res.status(400).json({ error: "lat or lon out of range" });
+    return;
+  }
+
+  try {
+    const address = await reverseGeocode(lat, lon);
+    if (!address) {
+      res.status(502).json({ error: "Reverse geocode failed" });
+      return;
+    }
+    res.json({ address });
+  } catch (err) {
+    console.error("Reverse geocode error:", err);
+    res.status(500).json({ error: "Reverse geocode failed" });
   }
 });
 

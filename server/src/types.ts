@@ -12,6 +12,8 @@ export interface TelemetryPayload {
   uid: string;
   lat?: number;
   lon?: number;
+  /** Horizontal GPS accuracy in meters (Android Location.getAccuracy()). */
+  accuracy_m?: number;
   battery?: number;
   timestamp?: number;
   is_charging?: boolean;
@@ -58,6 +60,7 @@ export interface DeviceRow {
   last_seen_at: Date | null;
   last_lat: number | null;
   last_lon: number | null;
+  last_location_accuracy_m: number | null;
   last_battery: number | null;
   last_is_charging: boolean | null;
   last_telemetry_at: Date | null;

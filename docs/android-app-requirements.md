@@ -163,11 +163,16 @@ or
   "uid": "568b166b3dd461eb",
   "lat": 39.7392,
   "lon": -104.9903,
+  "accuracy_m": 12.5,
   "battery": 87,
   "is_charging": false,
   "timestamp": 1718294400000
 }
 ```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `accuracy_m` | number | No | Horizontal GPS accuracy in meters from `Location.getAccuracy()`. Portal shows this as GPS confidence. |
 
 **Response 200:**
 

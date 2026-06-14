@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { fetchDevice, removeDevice, sendCommand } from "../api/client";
 import { useAdminWebSocket } from "../hooks/useAdminWebSocket";
-import { DeviceMap } from "../components/DeviceMap";
+import { DeviceLocationPanel } from "../components/DeviceLocationPanel";
 import { RemoteViewer } from "../components/RemoteViewer";
 import type { Device } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
@@ -253,16 +253,13 @@ export function DeviceDetail() {
         <section className="panel">
           <h2>Location</h2>
           {hasLocation ? (
-            <>
-              <p>
-                {device.last_lat!.toFixed(5)}, {device.last_lon!.toFixed(5)}
-              </p>
-              <DeviceMap
-                lat={device.last_lat!}
-                lon={device.last_lon!}
-                label={device.device_name}
-              />
-            </>
+            <DeviceLocationPanel
+              lat={device.last_lat!}
+              lon={device.last_lon!}
+              accuracyM={device.last_location_accuracy_m}
+              label={device.device_name}
+              user={auth.user!}
+            />
           ) : (
             <p className="empty-state">No location data yet.</p>
           )}
