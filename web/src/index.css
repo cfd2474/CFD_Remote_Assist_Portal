@@ -232,6 +232,26 @@ button:hover {
   color: var(--text-muted);
 }
 
+.app-subheader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0.45rem 1.5rem;
+  background: var(--brand-bg);
+  border-bottom: 1px solid #14325c;
+}
+
+.app-download-nav-link {
+  font-size: 0.875rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.app-download-nav-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 .app-main {
   flex: 1;
   padding: 1.5rem;
@@ -305,15 +325,15 @@ button:hover {
   text-transform: none;
   letter-spacing: normal;
   font-weight: 400;
-  color: var(--text);
-  background: var(--surface);
+  color: #1a2332;
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.45rem 0.6rem;
 }
 
 .device-list-filter::placeholder {
-  color: var(--text-muted);
+  color: #6b7c94;
 }
 
 .device-list-sort {
@@ -884,4 +904,81 @@ button:hover {
   justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 1.25rem;
+}
+
+.app-download-panel {
+  margin-top: 1.5rem;
+}
+
+.app-download-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2rem;
+}
+
+.app-download-icon-link {
+  display: inline-block;
+  line-height: 0;
+  border-radius: 22%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-download-icon-link:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 24px rgba(1, 210, 253, 0.25);
+}
+
+.app-download-icon {
+  display: block;
+  width: 128px;
+  height: 128px;
+  border-radius: 22%;
+}
+
+.app-download-meta {
+  flex: 1;
+  min-width: 220px;
+}
+
+.app-download-version {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.app-download-filename {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+}
+
+.app-download-button {
+  display: inline-block;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #001428;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.app-download-button:hover {
+  background: var(--accent-hover);
+  text-decoration: none;
+}
+
+.app-download-hint {
+  margin: 0.85rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.app-download-screenshots {
+  margin-top: 1.5rem;
+}
+
+.app-download-screenshots-placeholder {
+  margin: 0;
+  color: var(--text-muted);
 }

@@ -24,6 +24,11 @@ export function Layout() {
           </button>
         </div>
       </header>
+      <div className="app-subheader">
+        <Link to="/download" className="app-download-nav-link">
+          Download EUD Remote Assist .apk
+        </Link>
+      </div>
       <main className="app-main">
         <Outlet />
       </main>
