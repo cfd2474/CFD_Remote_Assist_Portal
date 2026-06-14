@@ -7,6 +7,7 @@ import { DeviceMap } from "../components/DeviceMap";
 import { RemoteViewer } from "../components/RemoteViewer";
 import type { Device } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
+import { formatDeviceModel } from "../utils/deviceModelNames";
 import type { StreamDimensions } from "../utils/streamDimensions";
 
 export function DeviceDetail() {
@@ -223,7 +224,7 @@ export function DeviceDetail() {
             </div>
             <div>
               <dt>Model</dt>
-              <dd>{device.model ?? "—"}</dd>
+              <dd>{formatDeviceModel(device.model)}</dd>
             </div>
             <div>
               <dt>App version</dt>

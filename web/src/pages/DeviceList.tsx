@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { fetchDevices } from "../api/client";
 import type { Device } from "../types";
+import { formatDeviceModel } from "../utils/deviceModelNames";
 
 export function DeviceList() {
   const auth = useAuth();
@@ -58,7 +59,7 @@ export function DeviceList() {
             <dl>
               <div>
                 <dt>Model</dt>
-                <dd>{device.model ?? "—"}</dd>
+                <dd>{formatDeviceModel(device.model)}</dd>
               </div>
               <div>
                 <dt>Battery</dt>
