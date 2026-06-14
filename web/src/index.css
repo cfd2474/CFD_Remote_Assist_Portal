@@ -65,51 +65,63 @@ button:hover {
 }
 
 .btn-connect {
-  background: #1dbf63;
+  background: #2196f3;
   border-color: var(--btn-border);
-  color: #052116;
+  color: #fff;
 }
 
 .btn-connect:hover {
-  background: #22c55e;
+  background: #42a5f5;
   border-color: var(--btn-border);
-  color: #052116;
+  color: #fff;
 }
 
 .btn-sound {
-  background: #c9a84c;
+  background: #7e57c2;
   border-color: var(--btn-border);
-  color: #1a1505;
+  color: #fff;
 }
 
 .btn-sound:hover {
-  background: #d4b356;
+  background: #9575cd;
   border-color: var(--btn-border);
-  color: #1a1505;
+  color: #fff;
 }
 
 .btn-locate {
-  background: #5eb0e3;
+  background: #009688;
   border-color: var(--btn-border);
-  color: #061828;
+  color: #fff;
 }
 
 .btn-locate:hover {
-  background: #72bee8;
+  background: #00a896;
   border-color: var(--btn-border);
-  color: #061828;
+  color: #fff;
 }
 
 .btn-resync {
-  background: var(--accent);
+  background: #00bcd4;
   border-color: var(--btn-border);
-  color: #001428;
+  color: #002128;
 }
 
 .btn-resync:hover {
-  background: var(--accent-hover);
+  background: #26c6da;
   border-color: var(--btn-border);
-  color: #001428;
+  color: #002128;
+}
+
+.btn-disconnect {
+  background: #1565c0;
+  border-color: var(--btn-border);
+  color: #fff;
+}
+
+.btn-disconnect:hover {
+  background: #1976d2;
+  border-color: var(--btn-border);
+  color: #fff;
 }
 
 .btn-danger {
@@ -118,18 +130,35 @@ button:hover {
 }
 
 .btn-lock {
-  background: #1a1f28;
+  background: #fb8c00;
   border-color: var(--btn-border);
-  color: #e8edf4;
+  color: #1a1200;
 }
 
 .btn-lock:hover {
-  background: #252b36;
+  background: #ffa726;
+  border-color: var(--btn-border);
+  color: #1a1200;
+}
+
+.btn-lock:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-remove {
+  background: #b71c1c;
   border-color: var(--btn-border);
   color: #fff;
 }
 
-.btn-lock:disabled {
+.btn-remove:hover {
+  background: #c62828;
+  border-color: var(--btn-border);
+  color: #fff;
+}
+
+.btn-remove:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

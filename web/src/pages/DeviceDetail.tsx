@@ -214,7 +214,7 @@ export function DeviceDetail() {
             className="btn-locate"
             onClick={() => void runCommand("REQUEST_LOCATION")}
           >
-            Locate now
+            Locate Device
           </button>
           {!remoteActive ? (
             <button
@@ -227,7 +227,7 @@ export function DeviceDetail() {
           ) : (
             <button
               type="button"
-              className="btn-danger"
+              className="btn-disconnect"
               onClick={() => void runCommand("STOP_REMOTE_ADMIN")}
             >
               Disconnect
@@ -238,7 +238,7 @@ export function DeviceDetail() {
             className="btn-resync"
             onClick={() => void runCommand("RESYNC_DEVICE_INFO")}
           >
-            Resync Device Info
+            Re-Sync Device Info
           </button>
           <button
             type="button"
@@ -246,7 +246,7 @@ export function DeviceDetail() {
             disabled={locking}
             onClick={() => setLockModalOpen(true)}
           >
-            Lock device
+            Lock Device
           </button>
         </div>
       </section>
@@ -359,11 +359,11 @@ export function DeviceDetail() {
         </p>
         <button
           type="button"
-          className="btn-danger"
+          className="btn-remove"
           disabled={removing}
           onClick={() => void handleRemoveDevice()}
         >
-          {removing ? "Removing…" : "Remove device and clear data"}
+          {removing ? "Removing…" : "Remove Device & Clear Data"}
         </button>
       </section>
     </div>
