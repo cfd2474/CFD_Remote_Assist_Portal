@@ -1,13 +1,13 @@
 :root {
   --brand-bg: #000d26;
-  --bg: #000d26;
-  --surface: #051528;
-  --surface-2: #0a1e3d;
-  --border: #14325c;
+  --bg: #0c1a38;
+  --surface: #122648;
+  --surface-2: #1a325c;
+  --border: #2a4d7a;
   --text: #eef4fc;
-  --text-muted: #6d8fb5;
+  --text-muted: #85a3c9;
   --accent: #01d2fd;
-  --accent-hover: #00b8e0;
+  --accent-hover: #33dcff;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -44,10 +44,12 @@ button {
   color: var(--text);
   padding: 0.55rem 1rem;
   border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 button:hover {
-  background: color-mix(in srgb, var(--surface-2) 85%, var(--accent) 15%);
+  background: color-mix(in srgb, var(--surface-2) 70%, var(--accent) 30%);
+  border-color: color-mix(in srgb, var(--border) 60%, var(--accent) 40%);
 }
 
 .btn-primary {
@@ -110,7 +112,7 @@ button:hover {
   padding: 0 1.5rem;
   box-sizing: border-box;
   background: var(--brand-bg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #14325c;
 }
 
 .header-brand a,
