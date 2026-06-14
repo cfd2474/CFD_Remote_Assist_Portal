@@ -41,51 +41,53 @@ export function DeviceList() {
         <p>{devices.length} registered device{devices.length !== 1 ? "s" : ""}</p>
       </div>
 
-      <div className="device-grid">
-        {devices.map((device) => (
-          <Link
-            key={device.uid}
-            to={`/devices/${device.uid}`}
-            className="device-card"
-          >
-            <div className="device-card-header">
-              <h2>{device.device_name}</h2>
-              <span
-                className={`badge ${device.is_online ? "badge-online" : "badge-offline"}`}
-              >
-                {device.is_online ? "Live" : "Offline"}
-              </span>
-            </div>
-            <dl>
-              <div>
-                <dt>Model</dt>
-                <dd>{formatDeviceModel(device.model)}</dd>
-              </div>
-              <div>
-                <dt>Battery</dt>
-                <dd>
-                  {device.last_battery != null
-                    ? `${device.last_battery}%${device.last_is_charging ? " (charging)" : ""}`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt>Last seen</dt>
-                <dd>
-                  {device.last_seen_at
-                    ? new Date(device.last_seen_at).toLocaleString()
-                    : "—"}
-                </dd>
-              </div>
-            </dl>
-          </Link>
-        ))}
-      </div>
-
-      {devices.length === 0 && (
+      {devices.length === 0 ? (
         <p className="empty-state">
           No devices registered yet. Deploy the Android client and register via MDM.
         </p>
+      ) : (
+        <div className="device-list-wrap">
+          <table className="device-list">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Status</th>
+                <th>Model</th>
+                <th>Battery</th>
+                <th>Last seen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {devices.map((device) => (
+                <tr key={device.uid}>
+                  <td>
+                    <Link to={`/devices/${device.uid}`} className="device-list-name">
+                      {device.device_name}
+                    </Link>
+                  </td>
+                  <td>
+                    <span
+                      className={`badge ${device.is_online ? "badge-online" : "badge-offline"}`}
+                    >
+                      {device.is_online ? "Live" : "Offline"}
+                    </span>
+                  </td>
+                  <td>{formatDeviceModel(device.model)}</td>
+                  <td>
+                    {device.last_battery != null
+                      ? `${device.last_battery}%${device.last_is_charging ? " (charging)" : ""}`
+                      : "—"}
+                  </td>
+                  <td>
+                    {device.last_seen_at
+                      ? new Date(device.last_seen_at).toLocaleString()
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
