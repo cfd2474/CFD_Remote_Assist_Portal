@@ -4,7 +4,7 @@ Remote screen viewing requires the Android client to implement **screen capture 
 
 ## Prerequisites
 
-1. Device connected to `wss://remote.tak-solutions.com/ws/device` (authenticated)
+1. Device connected to `wss://remote.tak-solutions.com:8448/ws/device` (authenticated; use MDM `tracking_server_url`)
 2. Admin clicked **Connect** → device receives:
 
 ```json

@@ -61,7 +61,7 @@ Registration response includes `connection_secret` — store it in MDM managed c
 
 ## WebSocket endpoint
 
-Devices connect to: `wss://remote.tak-solutions.com/ws/device`
+Devices connect to: `wss://remote.tak-solutions.com:8448/ws/device`
 
 **Required for instant admin commands** (ping, locate, remote assist). Without WebSocket, commands are queued and delivered on the next telemetry POST or `GET /api/v1/commands` poll.
 

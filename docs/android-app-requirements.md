@@ -4,6 +4,7 @@ This document describes everything the CFD Assist Android app must implement to 
 
 Use this as the primary integration spec for app developers. Related docs:
 
+- [android-device-api-port-handoff.md](android-device-api-port-handoff.md) — **port 8448 cutover (pass to app team)**
 - [mdm-config.md](mdm-config.md) — EMM managed configuration keys
 - [android-webrtc-requirements.md](android-webrtc-requirements.md) — WebRTC remote assist details
 - [android-control-handler-handoff.md](android-control-handler-handoff.md) — Kotlin touch + keyboard control handler
@@ -22,8 +23,11 @@ Use this as the primary integration spec for app developers. Related docs:
 | Command poll | `GET /api/v1/commands` |
 | Health check | `GET /health` |
 | Device WebSocket | `wss://remote.tak-solutions.com:8448/ws/device` |
+| Admin portal (humans only — not used by app) | `https://remote.tak-solutions.com` (443) |
 
-**Port 8448** is the dedicated device API port. Read `tracking_server_url` from MDM — do not hard-code the hostname or port.
+**Port 8448** is the dedicated device API port. Read `tracking_server_url` from MDM for every HTTP and WebSocket call — do not hard-code the hostname or port.
+
+> **443 vs 8448:** Port **443** serves the web admin portal and OIDC login. All Android device traffic (register, telemetry, commands, WebSocket) uses **8448**. Device routes are blocked on 443 — see [android-device-api-port-handoff.md](android-device-api-port-handoff.md).
 
 All requests must use **HTTPS/WSS** with valid TLS (Let's Encrypt on production).
 

@@ -50,7 +50,7 @@ If `stream_width × 2 ≈ displayWidth`, percentages are correct and only the in
 
 ## 1. Wire into existing WebSocket handler
 
-After auth on `wss://{host}/ws/device`, handle incoming JSON:
+After auth on `wss://{tracking_server_url host:port}/ws/device`, handle incoming JSON:
 
 ```kotlin
 when (message.optString("type")) {
