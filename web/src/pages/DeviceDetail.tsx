@@ -211,6 +211,7 @@ export function DeviceDetail() {
           </button>
           <button
             type="button"
+            className="btn-locate"
             onClick={() => void runCommand("REQUEST_LOCATION")}
           >
             Locate now

@@ -87,6 +87,18 @@ button:hover {
   color: #1a1505;
 }
 
+.btn-locate {
+  background: #5eb0e3;
+  border-color: #4a9fd4;
+  color: #061828;
+}
+
+.btn-locate:hover {
+  background: #72bee8;
+  border-color: #5eb0e3;
+  color: #061828;
+}
+
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
