@@ -11,7 +11,7 @@ export function Layout() {
         <div className="header-brand">
           <Link to="/" className="header-brand-link">
             <img
-              src="/eud-remote-assist-banner.png"
+              src="/eud-remote-assist-banner.jpg"
               alt="EUD Remote Assist"
               className="header-brand-logo"
             />

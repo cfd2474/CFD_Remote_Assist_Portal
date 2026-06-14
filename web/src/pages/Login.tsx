@@ -7,7 +7,7 @@ export function Login() {
     <div className="login-page">
       <div className="login-card">
         <img
-          src="/eud-remote-assist-banner.png"
+          src="/eud-remote-assist-banner.jpg"
           alt="EUD Remote Assist"
           className="login-logo"
         />
