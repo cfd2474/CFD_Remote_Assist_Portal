@@ -63,6 +63,30 @@ button:hover {
   border-color: var(--accent-hover);
 }
 
+.btn-connect {
+  background: #1dbf63;
+  border-color: #1a9f52;
+  color: #052116;
+}
+
+.btn-connect:hover {
+  background: #22c55e;
+  border-color: #1dbf63;
+  color: #052116;
+}
+
+.btn-sound {
+  background: #c9a84c;
+  border-color: #b89840;
+  color: #1a1505;
+}
+
+.btn-sound:hover {
+  background: #d4b356;
+  border-color: #c9a84c;
+  color: #1a1505;
+}
+
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);

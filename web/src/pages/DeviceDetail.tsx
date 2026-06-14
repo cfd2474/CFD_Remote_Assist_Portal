@@ -202,8 +202,12 @@ export function DeviceDetail() {
       <section className="panel">
         <h2>Actions</h2>
         <div className="action-row">
-          <button type="button" onClick={() => void runCommand("TRIGGER_PING")}>
-            Ping device
+          <button
+            type="button"
+            className="btn-sound"
+            onClick={() => void runCommand("TRIGGER_PING")}
+          >
+            Play Sound on Device
           </button>
           <button
             type="button"
@@ -214,7 +218,7 @@ export function DeviceDetail() {
           {!remoteActive ? (
             <button
               type="button"
-              className="btn-primary"
+              className="btn-connect"
               onClick={() => void runCommand("START_REMOTE_ADMIN")}
             >
               Connect
