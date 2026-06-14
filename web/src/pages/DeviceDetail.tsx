@@ -25,6 +25,7 @@ export function DeviceDetail() {
   const [webrtcReadySessionId, setWebrtcReadySessionId] = useState(0);
   const remoteSessionIdRef = useRef(0);
   const [removing, setRemoving] = useState(false);
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [lockModalOpen, setLockModalOpen] = useState(false);
   const [locking, setLocking] = useState(false);
   const [streamLayoutHint, setStreamLayoutHint] = useState<StreamDimensions | null>(
@@ -138,11 +139,7 @@ export function DeviceDetail() {
   const handleRemoveDevice = async () => {
     if (!auth.user || !uid || !device) return;
 
-    const confirmed = window.confirm(
-      `Remove "${device.device_name}" from the portal?\n\nThis permanently deletes the device record, telemetry history, and event log. The phone can register again later as a new enrollment.`
-    );
-    if (!confirmed) return;
-
+    setRemoveModalOpen(false);
     setRemoving(true);
     setActionMessage(null);
     try {
@@ -265,6 +262,21 @@ export function DeviceDetail() {
         </p>
       </ConfirmModal>
 
+      <ConfirmModal
+        open={removeModalOpen}
+        title="Remove device?"
+        confirmLabel="Remove Device & Clear Data"
+        confirmClassName="btn-remove"
+        onConfirm={() => void handleRemoveDevice()}
+        onCancel={() => setRemoveModalOpen(false)}
+      >
+        <p>
+          Remove &ldquo;{device.device_name}&rdquo; from the portal? This
+          permanently deletes the device record, telemetry history, and event
+          log. The phone can register again later as a new enrollment.
+        </p>
+      </ConfirmModal>
+
       <div className="detail-grid">
         <section className="panel">
           <h2>Device info</h2>
@@ -361,7 +373,7 @@ export function DeviceDetail() {
           type="button"
           className="btn-remove"
           disabled={removing}
-          onClick={() => void handleRemoveDevice()}
+          onClick={() => setRemoveModalOpen(true)}
         >
           {removing ? "Removing…" : "Remove Device & Clear Data"}
         </button>
