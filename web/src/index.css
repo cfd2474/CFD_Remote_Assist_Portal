@@ -99,13 +99,12 @@ button:hover {
 }
 
 .app-header {
-  --header-y-pad: 0.5rem;
   --header-height: 4.8125rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   min-height: var(--header-height);
-  padding: var(--header-y-pad) 1.5rem;
+  padding: 0 1.5rem;
   box-sizing: border-box;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -121,7 +120,7 @@ button:hover {
 
 .header-brand-logo {
   display: block;
-  height: calc(var(--header-height) - 2 * var(--header-y-pad));
+  height: var(--header-height);
   width: auto;
   max-width: none;
 }
