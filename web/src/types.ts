@@ -4,6 +4,7 @@ export interface Device {
   imei: string | null;
   device_name: string;
   model: string | null;
+  model_display: string;
   agency: string | null;
   phone_number: string | null;
   app_version: string | null;

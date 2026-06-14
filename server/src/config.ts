@@ -23,4 +23,8 @@ export const config = {
     repo: process.env.GITHUB_APK_REPO ?? "cfd2474/CFD_Remote_Assist_Portal",
     token: process.env.GITHUB_TOKEN || undefined,
   },
+  phonedb: {
+    /** PhoneDB serves an incomplete TLS chain; enable in production if lookups fail. */
+    tlsInsecure: process.env.PHONEDB_TLS_INSECURE === "true",
+  },
 };

@@ -14,6 +14,7 @@ import { queueCommand } from "../services/commands.js";
 import { setRemoteSessionActive, getSignalingStatus, getSignalingReplay } from "../services/signalingSession.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { getLatestApkRelease } from "../services/githubReleases.js";
+import { resolveModelDisplays, getModelDisplay } from "../services/phoneDb.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
 export const adminApiRouter = Router();
@@ -43,7 +44,18 @@ adminApiRouter.get("/devices", async (_req, res) => {
       is_online: hub.isDeviceOnline(d.uid),
       remote_admin_active: d.remote_admin_active,
     }));
-    res.json({ devices: sanitized });
+    const modelDisplays = await resolveModelDisplays(
+      sanitized.map((device) => device.model)
+    );
+    res.json({
+      devices: sanitized.map((device) => ({
+        ...device,
+        model_display:
+          (device.model && modelDisplays.get(device.model)) ||
+          device.model ||
+          "—",
+      })),
+    });
   } catch (err) {
     console.error("List devices error:", err);
     res.status(500).json({ error: "Failed to list devices" });
@@ -59,10 +71,12 @@ adminApiRouter.get("/devices/:uid", async (req, res) => {
     }
 
     const { connection_secret: _, ...sanitized } = device;
+    const model_display = await getModelDisplay(sanitized.model);
     res.json({
       device: {
         ...sanitized,
         is_online: hub.isDeviceOnline(sanitized.uid),
+        model_display,
       },
     });
   } catch (err) {

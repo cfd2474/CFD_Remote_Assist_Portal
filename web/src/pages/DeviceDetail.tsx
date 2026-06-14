@@ -8,7 +8,6 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { RemoteViewer } from "../components/RemoteViewer";
 import type { Device, DeviceCommand } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
-import { formatDeviceModel } from "../utils/deviceModelNames";
 import { formatPhoneNumber } from "../utils/formatPhoneNumber";
 import type { StreamDimensions } from "../utils/streamDimensions";
 
@@ -295,7 +294,7 @@ export function DeviceDetail() {
             </div>
             <div>
               <dt>Model</dt>
-              <dd>{formatDeviceModel(device.model)}</dd>
+              <dd>{device.model_display}</dd>
             </div>
             <div>
               <dt>App version</dt>

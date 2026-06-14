@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { fetchDevices } from "../api/client";
 import type { Device } from "../types";
-import { formatDeviceModel } from "../utils/deviceModelNames";
 
 type SortKey = "device_name" | "agency";
 type SortDir = "asc" | "desc";
@@ -185,7 +184,7 @@ export function DeviceList() {
                         {device.is_online ? "Live" : "Offline"}
                       </span>
                     </td>
-                    <td>{formatDeviceModel(device.model)}</td>
+                    <td>{device.model_display}</td>
                     <td>
                       {device.last_battery != null
                         ? `${device.last_battery}%${device.last_is_charging ? " (charging)" : ""}`

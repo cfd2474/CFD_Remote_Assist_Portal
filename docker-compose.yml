@@ -29,6 +29,7 @@ services:
       OIDC_JWKS_URI: ${OIDC_JWKS_URI:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL}
+      PHONEDB_TLS_INSECURE: ${PHONEDB_TLS_INSECURE:-true}
     expose:
       - "3000"
 
