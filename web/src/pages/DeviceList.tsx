@@ -51,6 +51,7 @@ export function DeviceList() {
             <thead>
               <tr>
                 <th>Device name</th>
+                <th>Agency</th>
                 <th>Status</th>
                 <th>Model</th>
                 <th>Battery</th>
@@ -65,6 +66,7 @@ export function DeviceList() {
                       {device.device_name}
                     </Link>
                   </td>
+                  <td>{device.agency ?? "—"}</td>
                   <td>
                     <span
                       className={`badge ${device.is_online ? "badge-online" : "badge-offline"}`}

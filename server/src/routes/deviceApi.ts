@@ -72,6 +72,7 @@ function normalizeRegistration(
     imei: firstString(input.imei),
     device_name: deviceName,
     model: firstString(input.model),
+    agency: firstString(input.agency),
     phone_number: firstString(input.phone_number, input.phoneNumber),
     app_version: firstString(input.app_version, input.appVersion),
   };

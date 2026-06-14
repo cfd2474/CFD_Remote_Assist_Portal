@@ -4,6 +4,7 @@ export interface DeviceRegistration {
   imei?: string;
   device_name: string;
   model?: string;
+  agency?: string;
   phone_number?: string;
   app_version?: string;
 }
@@ -69,6 +70,7 @@ export interface DeviceRow {
   imei: string | null;
   device_name: string;
   model: string | null;
+  agency: string | null;
   phone_number: string | null;
   app_version: string | null;
   connection_secret: string;

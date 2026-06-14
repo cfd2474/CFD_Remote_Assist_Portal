@@ -76,6 +76,7 @@ Use the device **Android ID** (`Settings.Secure.ANDROID_ID`) as `uid`. This is t
   "imei": "352637001234567",
   "device_name": "Galaxy XCover6 Pro",
   "model": "Samsung SM-G736U",
+  "agency": "City Fire Department",
   "phone_number": "+15551234567",
   "app_version": "1.2.0"
 }

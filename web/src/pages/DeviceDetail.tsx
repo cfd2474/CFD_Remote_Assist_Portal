@@ -262,6 +262,10 @@ export function DeviceDetail() {
               <dd>{device.uid}</dd>
             </div>
             <div>
+              <dt>Agency</dt>
+              <dd>{device.agency ?? "—"}</dd>
+            </div>
+            <div>
               <dt>Phone</dt>
               <dd>{formatPhoneNumber(device.phone_number)}</dd>
             </div>

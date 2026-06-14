@@ -32,8 +32,9 @@ export async function registerDevice(
         imei = COALESCE($3, imei),
         device_name = $4,
         model = COALESCE($5, model),
-        phone_number = COALESCE($6, phone_number),
-        app_version = COALESCE($7, app_version),
+        agency = COALESCE($6, agency),
+        phone_number = COALESCE($7, phone_number),
+        app_version = COALESCE($8, app_version),
         last_seen_at = NOW()
       WHERE uid = $1`,
       [
@@ -42,6 +43,7 @@ export async function registerDevice(
         data.imei ?? null,
         data.device_name,
         data.model ?? null,
+        data.agency ?? null,
         data.phone_number ?? null,
         data.app_version ?? null,
       ]
@@ -60,9 +62,9 @@ export async function registerDevice(
   const connection_secret = generateConnectionSecret();
   const result = await pool.query<DeviceRow>(
     `INSERT INTO devices (
-      uid, serial, imei, device_name, model, phone_number, app_version,
+      uid, serial, imei, device_name, model, agency, phone_number, app_version,
       connection_secret, last_seen_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
     RETURNING *`,
     [
       data.uid,
@@ -70,6 +72,7 @@ export async function registerDevice(
       data.imei ?? null,
       data.device_name,
       data.model ?? null,
+      data.agency ?? null,
       data.phone_number ?? null,
       data.app_version ?? null,
       connection_secret,

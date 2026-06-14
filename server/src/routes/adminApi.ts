@@ -28,6 +28,7 @@ adminApiRouter.get("/devices", async (_req, res) => {
       imei: d.imei,
       device_name: d.device_name,
       model: d.model,
+      agency: d.agency,
       phone_number: d.phone_number,
       app_version: d.app_version,
       registered_at: d.registered_at,
