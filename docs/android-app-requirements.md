@@ -532,7 +532,7 @@ Landscape is detected when **width > height** on whichever signal is current.
    val captureHeight = bounds.height()
    ```
 
-   Use the same width/height for MediaProjection VirtualDisplay, WebRTC capturer, and control-packet touch mapping.
+   Use display width/height for VirtualDisplay/WebRTC capturer **or** a scaled-down size for bandwidth — but always map control packets using **display** bounds (see step 3).
 
 2. **Update capture on rotation** — Register for configuration/orientation changes in the foreground service that owns MediaProjection (not only the Activity):
 
@@ -545,14 +545,15 @@ Landscape is detected when **width > height** on whichever signal is current.
    // or release and recreate VirtualDisplay + VideoSource
    ```
 
-3. **Keep touch coordinates aligned** — Remote `control` packets use `x_percent` / `y_percent` (0.0–1.0) relative to the **current capture width/height**. After rotation, inject gestures with:
+3. **Keep touch coordinates aligned** — Remote `control` packets use `x_percent` / `y_percent` (0.0–1.0) as fractions of **full screen content** (same proportional point on stream and display). Inject gestures at **physical display pixels**, not WebRTC capture buffer size (capture may be half-res for bandwidth):
 
    ```kotlin
-   val x = (x_percent * captureWidth).toInt()
-   val y = (y_percent * captureHeight).toInt()
+   val bounds = windowManager.currentWindowMetrics.bounds
+   val x = (x_percent * bounds.width()).toFloat()
+   val y = (y_percent * bounds.height()).toFloat()
    ```
 
-   Update `captureWidth` / `captureHeight` whenever capture size changes.
+   Refresh display bounds on every rotation. **Do not** multiply by capture width/height unless capture exactly matches display size.
 
 4. **Renegotiate WebRTC if required** — Some WebRTC builds fire `onRenegotiationNeeded` after `changeCaptureFormat` or track replacement. If so:
 
@@ -590,7 +591,7 @@ Landscape is detected when **width > height** on whichever signal is current.
 - [ ] Foreground remote-assist service handles `onConfigurationChanged` or `OrientationEventListener`
 - [ ] Capture width/height refreshed from `WindowManager` / `Display` on every rotation
 - [ ] `ScreenCapturer.changeCaptureFormat()` or VirtualDisplay resize/recreate called
-- [ ] Touch injection uses current capture dimensions (width for X, **height for Y**)
+- [ ] Touch injection uses **display** dimensions from `WindowManager` (width for X, height for Y), not scaled-down capture size
 - [ ] WebRTC renegotiation completed if `onRenegotiationNeeded` fires (new SDP answer sent)
 - [ ] `ORIENTATION_CHANGED` device event sent with new `width` / `height`
 - [ ] Do **not** lock the capture VirtualDisplay to portrait metrics for the whole session
@@ -601,7 +602,8 @@ Landscape is detected when **width > height** on whichever signal is current.
 |---------|----------------|
 | Portal stays Portrait after device rotates | Capture still outputs portrait frame size; `changeCaptureFormat` not called |
 | Panel aspect wrong but badge correct | Event sent but video track not resized — complete step 2 + renegotiation |
-| Horizontal swipes work, vertical do not | Touch mapping uses `captureWidth` for Y — use `captureHeight` for Y |
+| Clicks land in wrong place (~2× offset) | Touch mapping uses WebRTC capture size (540×1204) instead of display size (1080×2408) |
+| Horizontal swipes work, vertical do not | Touch mapping uses display/capture **width** for Y — use **height** for Y |
 | Black flash on rotate | VirtualDisplay recreated without re-attaching to VideoSource — swap track or renegotiate |
 
 #### Minimal Kotlin sketch
@@ -641,14 +643,16 @@ private fun onDisplayRotated() {
 
 During an active remote session, the admin may send touch packets on the device WebSocket:
 
-**Click:**
+**Click (with optional stream metadata for scale debugging):**
 
 ```json
 {
   "type": "control",
   "action": "CLICK",
   "x_percent": 0.52,
-  "y_percent": 0.41
+  "y_percent": 0.41,
+  "stream_width": 540,
+  "stream_height": 1204
 }
 ```
 
@@ -698,7 +702,7 @@ Coordinates are **0.0–1.0** fractions of the **device screen** (not the letter
 
 | Action | Recommended API |
 |--------|-----------------|
-| `CLICK` | `AccessibilityService.dispatchGesture()` — short stroke (~50 ms) at `(x_percent * width, y_percent * height)` |
+| `CLICK` | `AccessibilityService.dispatchGesture()` — short stroke (~50 ms) at `(x_percent * displayWidth, y_percent * displayHeight)` |
 | `SWIPE` | `dispatchGesture()` — stroke from start to end; honor optional `duration_ms` (portal sends **250–900 ms**, default **350 ms**). Vertical system gestures (app drawer, notifications) require **both** correct Y coordinates and adequate duration. |
 | `LONG_PRESS` | `dispatchGesture()` — hold stroke ~600 ms at point |
 | `KEY` + `hardware_keyboard` | `Instrumentation` or accessibility `performGlobalAction` for `BACK`/`HOME`/`RECENTS`; otherwise inject `KeyEvent` with `SOURCE_KEYBOARD` |
@@ -713,14 +717,17 @@ fun injectSwipe(x1: Float, y1: Float, x2: Float, y2: Float, durationMs: Long = 3
 }
 ```
 
-Convert `x_percent` / `y_percent` using the **MediaProjection capture size** (same coordinate space as the streamed screen):
+Convert `x_percent` / `y_percent` using **physical display size** (`WindowManager.currentWindowMetrics.bounds`). Percentages are proportional to screen content; `dispatchGesture()` always expects full display coordinates:
 
 ```kotlin
-val x = (x_percent * captureWidth).toInt()
-val y = (y_percent * captureHeight).toInt()  // must use height, not width
+val bounds = windowManager.currentWindowMetrics.bounds
+val x = (x_percent * bounds.width()).toFloat()
+val y = (y_percent * bounds.height()).toFloat()  // must use height, not width
 ```
 
-**Common bug:** using `captureWidth` for both X and Y breaks vertical swipes while horizontal swipes still appear to work.
+**Common bugs:**
+- Using WebRTC **capture** width/height when capture is scaled down (e.g. half-res) — touches land at ~half the correct position on both axes.
+- Using display/capture **width** for both X and Y — breaks vertical swipes while horizontal swipes still appear to work.
 
 ### Reference implementation (Kotlin)
 

@@ -8,6 +8,46 @@ Related: [android-app-requirements.md §9](android-app-requirements.md#9-remote-
 
 ---
 
+## ⚠️ Critical: touch injection uses **display** pixels, not capture pixels
+
+If clicks land in the **wrong place** (often ~half offset on both axes), you are almost certainly multiplying `x_percent` / `y_percent` by the **WebRTC capture buffer size** instead of the **physical display size**.
+
+**Verified from production logcat (uid `568b166b3dd461eb`, Galaxy XCover6 Pro):**
+
+| | Width | Height |
+|---|------:|-------:|
+| Physical display | 1080 | 2408 |
+| WebRTC capture (`ScreenShare: Starting capture at`) | 540 | 1204 |
+| Scale | 2× | 2× |
+
+Portal sent bottom-center click: `x_percent=0.499`, `y_percent=0.891`.
+
+| Mapping | Result | Correct? |
+|---------|--------:|:--------:|
+| `0.499 × 540`, `0.891 × 1204` → **269, 1072** | What `RemoteControlHandler` logged | ❌ |
+| `0.499 × 1080`, `0.891 × 2408` → **539, 2146** | What `dispatchGesture()` needs | ✅ |
+
+`AccessibilityService.dispatchGesture()` coordinates are always in **full display pixel space**, even when MediaProjection captures at half resolution for bandwidth.
+
+**Rule:** `x = x_percent × displayWidth`, `y = y_percent × displayHeight` using `WindowManager.currentWindowMetrics.bounds` (refresh on rotation). **Do not** use `captureWidth` / `captureHeight` from the WebRTC capturer unless they exactly equal display size.
+
+The portal may include optional metadata on touch packets for debugging:
+
+```json
+{
+  "type": "control",
+  "action": "CLICK",
+  "x_percent": 0.499,
+  "y_percent": 0.891,
+  "stream_width": 540,
+  "stream_height": 1204
+}
+```
+
+If `stream_width × 2 ≈ displayWidth`, percentages are correct and only the injection mapping is wrong.
+
+---
+
 ## 1. Wire into existing WebSocket handler
 
 After auth on `wss://{host}/ws/device`, handle incoming JSON:
@@ -34,7 +74,7 @@ The portal/server sends **flat** control objects (no nested payload):
 | Requirement | Why |
 |-------------|-----|
 | **AccessibilityService** enabled for your app | `dispatchGesture()` for touch; `performGlobalAction()` for Back/Home/Recents |
-| **Capture size tracking** | Map `x_percent` / `y_percent` to pixels; update on rotation (§8.1) |
+| **Display size tracking** | Map `x_percent` / `y_percent` to **physical display pixels** for injection; refresh on rotation |
 | **Key injection path** | See §5 — MDM device-owner apps typically use `UiAutomation` and/or `input keyevent` shell |
 
 ### Accessibility service manifest (minimum)
@@ -73,7 +113,7 @@ Prompt the user (or MDM policy) to enable this service before remote assist.
 
 ## 3. `RemoteControlHandler` (touch + keyboard)
 
-Drop-in handler class. Pass your running `AccessibilityService` and lambdas that return **current capture width/height** (must match MediaProjection / touch injection space).
+Drop-in handler class. Pass your running `AccessibilityService` and lambdas that return **current physical display width/height** (from `WindowManager`, not WebRTC capture size).
 
 ```kotlin
 package com.example.cfdremoteassist.remote
@@ -90,8 +130,10 @@ import java.util.Locale
 
 class RemoteControlHandler(
     private val service: AccessibilityService,
-    private val captureWidth: () -> Int,
-    private val captureHeight: () -> Int,
+    /** Physical display width in pixels — `WindowManager.currentWindowMetrics.bounds.width()` */
+    private val displayWidth: () -> Int,
+    /** Physical display height in pixels — `WindowManager.currentWindowMetrics.bounds.height()` */
+    private val displayHeight: () -> Int,
     private val keyInjector: KeyInjector = UiAutomationKeyInjector(service),
 ) {
     private val tag = "RemoteControlHandler"
@@ -103,6 +145,7 @@ class RemoteControlHandler(
             "CLICK" -> injectClick(
                 message.getDouble("x_percent"),
                 message.getDouble("y_percent"),
+                message,
             )
             "SWIPE" -> injectSwipe(
                 message.getDouble("x_percent"),
@@ -110,10 +153,12 @@ class RemoteControlHandler(
                 message.getDouble("x2_percent"),
                 message.getDouble("y2_percent"),
                 message.optLong("duration_ms", 350L),
+                message,
             )
             "LONG_PRESS" -> injectLongPress(
                 message.getDouble("x_percent"),
                 message.getDouble("y_percent"),
+                message,
             )
             "KEY" -> injectKey(
                 message.optString("key"),
@@ -124,25 +169,37 @@ class RemoteControlHandler(
     }
 
     private fun toX(xPercent: Double): Float {
-        val w = captureWidth().coerceAtLeast(1)
+        val w = displayWidth().coerceAtLeast(1)
         return (xPercent * w).toFloat().coerceIn(0f, w - 1f)
     }
 
     private fun toY(yPercent: Double): Float {
-        val h = captureHeight().coerceAtLeast(1)
+        val h = displayHeight().coerceAtLeast(1)
         return (yPercent * h).toFloat().coerceIn(0f, h - 1f)
     }
 
-    private fun injectClick(xPercent: Double, yPercent: Double) {
-        val x = toX(xPercent)
-        val y = toY(yPercent)
-        dispatchStroke(x, y, x, y, durationMs = 50L)
-        Log.d(tag, "CLICK at $x,$y")
+    private fun logScaleHint(message: JSONObject) {
+        val sw = message.optInt("stream_width", 0)
+        val sh = message.optInt("stream_height", 0)
+        if (sw > 0 && sh > 0) {
+            val dw = displayWidth()
+            val dh = displayHeight()
+            Log.d(tag, "display=${dw}x${dh} stream=${sw}x${sh}")
+        }
     }
 
-    private fun injectLongPress(xPercent: Double, yPercent: Double) {
+    private fun injectClick(xPercent: Double, yPercent: Double, message: JSONObject) {
         val x = toX(xPercent)
         val y = toY(yPercent)
+        logScaleHint(message)
+        dispatchStroke(x, y, x, y, durationMs = 50L)
+        Log.d(tag, "CLICK at $x,$y (${displayWidth()}x${displayHeight()})")
+    }
+
+    private fun injectLongPress(xPercent: Double, yPercent: Double, message: JSONObject) {
+        val x = toX(xPercent)
+        val y = toY(yPercent)
+        logScaleHint(message)
         dispatchStroke(x, y, x, y, durationMs = 600L)
         Log.d(tag, "LONG_PRESS at $x,$y")
     }
@@ -153,12 +210,14 @@ class RemoteControlHandler(
         x2Percent: Double,
         y2Percent: Double,
         durationMs: Long,
+        message: JSONObject,
     ) {
         val x1 = toX(x1Percent)
         val y1 = toY(y1Percent)
         val x2 = toX(x2Percent)
         val y2 = toY(y2Percent)
         val duration = durationMs.coerceIn(100L, 2000L)
+        logScaleHint(message)
         dispatchStroke(x1, y1, x2, y2, durationMs = duration)
         Log.d(tag, "SWIPE ($x1,$y1)→($x2,$y2) ${duration}ms")
     }
@@ -329,7 +388,112 @@ object PortalKeyParser {
 
 Production logs prove keys reach the device WebSocket — you must inject them into the system. Pick **one** strategy (or chain fallbacks) for your MDM deployment.
 
-### Option A — `UiAutomation` (try first)
+### ⚠️ Do **not** use `Instrumentation.sendKeySync`
+
+Logcat from uid `568b166b3dd461eb` (2026-06-13) shows this failure on every key:
+
+```
+SecurityException: Injecting input events requires ... INJECT_EVENTS permission.
+    at android.app.Instrumentation.sendKeySync(...)
+    at InstrumentationKeyInjector.inject(KeyInjector.kt:19)
+```
+
+`Instrumentation` requires the **`INJECT_EVENTS` signature/privileged permission** — normal apps and accessibility services **cannot** use it on Samsung/production builds. Parsing is fine (`KEYCODE_A → keyCode=29`); injection is blocked.
+
+**Remove `InstrumentationKeyInjector` from your chain.** Use Option A (`UiAutomation`) and/or Option B (shell) below.
+
+### How KEY packets arrive (portal → device)
+
+The portal sends **one WebSocket message per physical key press** (not a full string). For typing `ataktest1` you will receive **10 separate packets**:
+
+```json
+{"type":"control","action":"KEY","key":"KEYCODE_A","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_T","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_A","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_K","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_T","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_E","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_S","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_T","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_1","input_method":"hardware_keyboard"}
+{"type":"control","action":"KEY","key":"KEYCODE_ENTER","input_method":"hardware_keyboard"}
+```
+
+Server logs each relay as: `Control KEY uid=568b166b3dd461eb key=KEYCODE_A` (one line per key).
+
+**Android read/parse (minimal):**
+
+```kotlin
+fun handle(message: JSONObject) {
+    if (message.optString("type") != "control") return
+    when (message.optString("action")) {
+        "KEY" -> injectKey(
+            key = message.optString("key"),           // e.g. "KEYCODE_A", "KEYCODE_1", "Ctrl+c"
+            inputMethod = message.optString("input_method"), // "hardware_keyboard"
+        )
+    }
+}
+
+private fun injectKey(key: String, inputMethod: String) {
+    if (key.isBlank()) return
+
+    // Navigation — no KeyEvent needed
+    when (key.uppercase(Locale.US)) {
+        "BACK" -> { service.performGlobalAction(GLOBAL_ACTION_BACK); return }
+        "HOME" -> { service.performGlobalAction(GLOBAL_ACTION_HOME); return }
+        "RECENTS" -> { service.performGlobalAction(GLOBAL_ACTION_RECENTS); return }
+    }
+
+    val parsed = PortalKeyParser.parse(key) ?: run {
+        Log.w(tag, "Unmapped key: $key"); return
+    }
+
+    val source = KeyEvent.SOURCE_KEYBOARD  // external keyboard semantics
+    val down = KeyEvent(..., ACTION_DOWN, parsed.keyCode, ..., parsed.metaState, ..., source)
+    val up   = KeyEvent(..., ACTION_UP,   parsed.keyCode, ..., parsed.metaState, ..., source)
+
+    val okDown = keyInjector.inject(down)
+    val okUp   = keyInjector.inject(up)
+    Log.d(tag, "KEY $key → keyCode=${parsed.keyCode} down=$okDown up=$okUp")
+}
+```
+
+**Verified keyCode mapping from your logcat** (parser is correct):
+
+| Portal `key` | Android `keyCode` | Character |
+|--------------|------------------:|-----------|
+| `KEYCODE_A` | 29 | a |
+| `KEYCODE_T` | 48 | t |
+| `KEYCODE_K` | 39 | k |
+| `KEYCODE_E` | 33 | e |
+| `KEYCODE_S` | 47 | s |
+| `KEYCODE_1` | 8 | 1 |
+| `KEYCODE_ENTER` | 66 | enter |
+| `KEYCODE_DEL` | 67 | backspace |
+
+Success looks like: `KEY KEYCODE_A → keyCode=29 down=true up=true` (both true).
+
+### Diagnosing `down=false up=true` (your current logcat)
+
+If every key shows **`down=false up=true`**, parsing is fine but **nothing is injected into the focused app**:
+
+| Step | What happens |
+|------|----------------|
+| `ACTION_DOWN` | `UiAutomation.injectInputEvent` returns `false` (common on Samsung without main-thread dispatch) |
+| `ACTION_DOWN` | `ShellKeyInjector` runs `input keyevent` → fails (app is not device-owner / no shell) |
+| `ACTION_UP` | `ShellKeyInjector` returns `true` **without injecting** (by design — see Option B) |
+
+So `up=true` is a **false positive** — it does not mean the key reached the UI.
+
+**Fix order for Galaxy XCover / Samsung MDM:**
+
+1. Dispatch `UiAutomation` on the **main thread** (Option A below).
+2. Add **`AccessibilitySetTextInjector`** (Option C) — works when a text field is focused; this is what most remote-assist apps use when `injectInputEvent` is blocked.
+3. Confirm device-owner shell if you rely on Option B (`adb shell input keyevent 48` from the app UID).
+
+**Prerequisite:** Tap/click a text field on the device **before** typing from the portal so `findFocus(FOCUS_INPUT)` returns an editable node.
+
+### Option A — `UiAutomation` (main thread required on Samsung)
 
 Works on many builds when called from an enabled `AccessibilityService` on API 24+:
 
@@ -341,10 +505,30 @@ interface KeyInjector {
 class UiAutomationKeyInjector(
     private val service: AccessibilityService,
 ) : KeyInjector {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     override fun inject(event: KeyEvent): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
+
+        // WebSocket callbacks are background threads — Samsung often rejects inject off main.
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            var result = false
+            val latch = CountDownLatch(1)
+            mainHandler.post {
+                result = injectOnMainThread(event)
+                latch.countDown()
+            }
+            latch.await(500, TimeUnit.MILLISECONDS)
+            return result
+        }
+        return injectOnMainThread(event)
+    }
+
+    private fun injectOnMainThread(event: KeyEvent): Boolean {
         return try {
-            service.uiAutomation.injectInputEvent(event, true)
+            val ok = service.uiAutomation.injectInputEvent(event, true)
+            if (!ok) Log.w("KeyInjector", "UiAutomation returned false action=${event.action} keyCode=${event.keyCode}")
+            ok
         } catch (e: Exception) {
             Log.w("KeyInjector", "UiAutomation inject failed", e)
             false
@@ -353,6 +537,8 @@ class UiAutomationKeyInjector(
 }
 ```
 
+Add imports: `android.os.Handler`, `android.os.Looper`, `java.util.concurrent.CountDownLatch`, `java.util.concurrent.TimeUnit`.
+
 ### Option B — Device-owner shell fallback (common on fully managed phones)
 
 If Option A returns `false`, many enterprise apps run:
@@ -360,10 +546,14 @@ If Option A returns `false`, many enterprise apps run:
 ```kotlin
 class ShellKeyInjector : KeyInjector {
     override fun inject(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_DOWN) return true // one shot per key
+        if (event.action != KeyEvent.ACTION_DOWN) return false // do NOT fake success on UP
         return try {
-            val cmd = arrayOf("sh", "-c", "input keyevent ${event.keyCode}")
-            Runtime.getRuntime().exec(cmd).waitFor() == 0
+            val exit = Runtime.getRuntime()
+                .exec(arrayOf("sh", "-c", "input keyevent ${event.keyCode}"))
+                .waitFor()
+            val ok = exit == 0
+            if (!ok) Log.w("KeyInjector", "shell input keyevent ${event.keyCode} exit=$exit")
+            ok
         } catch (e: Exception) {
             Log.w("KeyInjector", "shell input keyevent failed", e)
             false
@@ -388,9 +578,98 @@ class ChainedKeyInjector(
 
 Requires device-owner / privileged shell on managed devices. **Do not** rely on this alone on unmanaged Play Store builds.
 
-### Option C — Global actions only (minimal)
+### Option C — `ACTION_SET_TEXT` on focused field (recommended Samsung fallback)
 
-If key injection is blocked by OEM policy, at minimum implement `BACK` / `HOME` / `RECENTS` via `performGlobalAction` and document that alphanumeric keys need Option A or B.
+When Options A and B both return `false`, inject text through the accessibility tree into the **currently focused editable** node. This is not a hardware keyboard event, but it **does** put characters on screen in ATAK, Chrome, Settings search, etc.
+
+```kotlin
+class AccessibilitySetTextInjector(
+    private val service: AccessibilityService,
+) : KeyInjector {
+    override fun inject(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN) return false
+
+        val node = service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: service.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: run {
+                Log.w("KeyInjector", "SetText: no focused input — click a text field on device first")
+                return false
+            }
+
+        if (!node.isEditable) {
+            Log.w("KeyInjector", "SetText: focused node not editable class=${node.className}")
+            node.recycle()
+            return false
+        }
+
+        val current = node.text?.toString().orEmpty()
+        val newText = when (event.keyCode) {
+            KeyEvent.KEYCODE_DEL -> current.dropLast(1)
+            KeyEvent.KEYCODE_ENTER -> {
+                val ok = node.performAction(AccessibilityNodeInfo.ACTION_IME_ACTION)
+                node.recycle()
+                return ok
+            }
+            else -> {
+                val ch = keyCodeToChar(event.keyCode, event.metaState)
+                    ?: run {
+                        node.recycle()
+                        return false
+                    }
+                current + ch
+            }
+        }
+
+        val args = Bundle().apply {
+            putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                newText,
+            )
+        }
+        val ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        node.recycle()
+        if (!ok) Log.w("KeyInjector", "SetText performAction failed keyCode=${event.keyCode}")
+        return ok
+    }
+
+    private fun keyCodeToChar(keyCode: Int, metaState: Int): Char? {
+        val shift = metaState and KeyEvent.META_SHIFT_ON != 0
+        return when (keyCode) {
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z -> {
+                val c = ('a'.code + (keyCode - KeyEvent.KEYCODE_A)).toChar()
+                if (shift) c.uppercaseChar() else c
+            }
+            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 ->
+                ('0'.code + (keyCode - KeyEvent.KEYCODE_0)).toChar()
+            KeyEvent.KEYCODE_SPACE -> ' '
+            else -> null
+        }
+    }
+}
+```
+
+Add to manifest accessibility config if not already present:
+
+```xml
+android:canPerformGestures="true"
+android:canRetrieveWindowContent="true"
+```
+
+### Option D — Global actions only (minimal)
+
+If all injectors fail, at minimum implement `BACK` / `HOME` / `RECENTS` via `performGlobalAction` (already in `RemoteControlHandler`).
+
+### Recommended injector chain (Samsung / MDM)
+
+```kotlin
+keyInjector = ChainedKeyInjector(
+    UiAutomationKeyInjector(this),       // main-thread UiAutomation
+    ShellKeyInjector(),                  // device-owner only
+    AccessibilitySetTextInjector(this), // fallback when injectInputEvent blocked
+)
+```
+
+With Option C in the chain, logcat for a successful key should show **`down=true`** (SetText handles DOWN only; UP may stay `false` — that is OK if text appears).
 
 ---
 
@@ -405,11 +684,12 @@ class RemoteAssistAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         controlHandler = RemoteControlHandler(
             service = this,
-            captureWidth = { RemoteSessionManager.captureWidth },
-            captureHeight = { RemoteSessionManager.captureHeight },
+            displayWidth = { RemoteSessionManager.displayWidth },
+            displayHeight = { RemoteSessionManager.displayHeight },
             keyInjector = ChainedKeyInjector(
                 UiAutomationKeyInjector(this),
                 ShellKeyInjector(),
+                AccessibilitySetTextInjector(this),
             ),
         )
     }
@@ -448,7 +728,7 @@ Before closing the keyboard ticket:
 - [ ] Typed characters appear in focused field on device (Notes, search bar, etc.)
 - [ ] `BACK` / `HOME` / `RECENTS` work via `performGlobalAction`
 - [ ] Click / swipe still work after adding KEY handler
-- [ ] After rotation, touch coords still correct (capture width/height updated)
+- [ ] After rotation, touch coords still correct (`displayWidth` / `displayHeight` refreshed from `WindowManager`)
 
 ### Logcat filter
 
@@ -462,8 +742,11 @@ adb logcat -s RemoteControlHandler KeyInjector
 
 | Symptom | Cause |
 |---------|--------|
+| Clicks land ~half offset (wrong spot entirely) | Multiplying by WebRTC **capture** size (e.g. 540×1204) instead of **display** size (1080×2408) — see top of this doc |
+| Keys parsed, `down=false up=true` on Samsung | UiAutomation + shell both failed; UP=true is shell no-op — add `AccessibilitySetTextInjector` + click text field first |
+| Keys parsed, `down=false up=false`, `INJECT_EVENTS` in logcat | Using `Instrumentation.sendKeySync` — switch to `UiAutomationKeyInjector` (§5) |
 | Server logs KEY, nothing on device | WebSocket handler ignores `type: "control"` or only handles touch |
-| Keys logged, `down=false` | `KeyInjector` blocked — enable UiAutomation or device-owner shell |
+| Keys logged, `down=false` | All injectors failed — check focus (`SetText: no focused input`) or device-owner shell |
 | Wrong characters | Using IME `commitText` instead of `KeyEvent` with `SOURCE_KEYBOARD` |
 | Touch works, keys don't | Separate code paths — KEY branch not implemented |
 | `KEYCODE_T` not recognized | Parser missing — use `PortalKeyParser` above |

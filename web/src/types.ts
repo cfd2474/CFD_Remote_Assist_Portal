@@ -31,6 +31,10 @@ export interface ControlPacket {
   y2_percent?: number;
   /** Suggested gesture duration for device injection (ms). */
   duration_ms?: number;
+  /** WebRTC frame width when touch was sent (portal metadata for Android scale checks). */
+  stream_width?: number;
+  /** WebRTC frame height when touch was sent (portal metadata for Android scale checks). */
+  stream_height?: number;
   key?: string;
   /** Hint for KEY packets: inject as hardware keyboard KeyEvent on device */
   input_method?: "hardware_keyboard";

@@ -5,7 +5,6 @@ import { fetchDevice, removeDevice, sendCommand } from "../api/client";
 import { useAdminWebSocket } from "../hooks/useAdminWebSocket";
 import { DeviceMap } from "../components/DeviceMap";
 import { RemoteViewer } from "../components/RemoteViewer";
-import { SignalingDiagnostics } from "../components/SignalingDiagnostics";
 import type { Device } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
 import type { StreamDimensions } from "../utils/streamDimensions";
@@ -19,7 +18,6 @@ export function DeviceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [remoteActive, setRemoteActive] = useState(false);
-  const [diagnosticsPinned, setDiagnosticsPinned] = useState(false);
   const [remoteSessionId, setRemoteSessionId] = useState(0);
   const [webrtcReadySessionId, setWebrtcReadySessionId] = useState(0);
   const remoteSessionIdRef = useRef(0);
@@ -39,7 +37,6 @@ export function DeviceDetail() {
       setDevice(data);
       if (!initialLoadDone.current) {
         setRemoteActive(data.remote_admin_active);
-        if (data.remote_admin_active) setDiagnosticsPinned(true);
         initialLoadDone.current = true;
       } else if (data.remote_admin_active) {
         setRemoteActive(true);
@@ -92,7 +89,6 @@ export function DeviceDetail() {
       const result = await sendCommand(auth.user, uid, command);
       if (command === "START_REMOTE_ADMIN") {
         setRemoteActive(true);
-        setDiagnosticsPinned(true);
         remoteSessionIdRef.current += 1;
         setRemoteSessionId(remoteSessionIdRef.current);
         setWebrtcReadySessionId(0);
@@ -294,12 +290,6 @@ export function DeviceDetail() {
           deviceStreamReady={deviceStreamReady}
           serverAnswerReceived={signalingStatus?.answerReceived ?? false}
           streamLayoutHint={streamLayoutHint}
-        />
-        <SignalingDiagnostics
-          uid={device.uid}
-          visible={diagnosticsPinned || remoteActive}
-          liveStatus={signalingStatus}
-          onHide={() => setDiagnosticsPinned(false)}
         />
       </section>
 

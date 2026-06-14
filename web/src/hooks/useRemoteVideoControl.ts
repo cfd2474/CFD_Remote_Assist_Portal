@@ -6,7 +6,7 @@ import {
   normalizeControlKey,
   shouldForwardKeyboardToDevice,
 } from "../utils/remoteKeyboard";
-import { moveThresholdPx, pointOnVideo, swipeDurationMs } from "../utils/videoCoordinates";
+import { moveThresholdPx, pointOnVideo, streamMeta, swipeDurationMs } from "../utils/videoCoordinates";
 
 interface ActivePointer {
   id: number;
@@ -126,9 +126,10 @@ export function useRemoteVideoControl({
 
       const start = pointOnVideo(video, pointer.startX, pointer.startY);
       const end = pointOnVideo(video, endX, endY);
+      const meta = streamMeta(video);
 
       if (!pointer.moved) {
-        void send({ action: "CLICK", ...start });
+        void send({ action: "CLICK", ...start, ...meta });
         return;
       }
 
@@ -138,6 +139,7 @@ export function useRemoteVideoControl({
         x2_percent: end.x_percent,
         y2_percent: end.y_percent,
         duration_ms: swipeDurationMs(start, end, Date.now() - pointer.startedAt),
+        ...meta,
       });
     },
     [send, videoRef]
@@ -154,7 +156,7 @@ export function useRemoteVideoControl({
       if (e.button === 2) {
         e.preventDefault();
         const point = pointOnVideo(video, e.clientX, e.clientY);
-        void send({ action: "LONG_PRESS", ...point });
+        void send({ action: "LONG_PRESS", ...point, ...streamMeta(video) });
         return;
       }
       if (e.button !== 0) return;
@@ -250,7 +252,7 @@ export function useRemoteVideoControl({
       const video = videoRef.current;
       if (!video) return;
       const point = pointOnVideo(video, e.clientX, e.clientY);
-      void send({ action: "LONG_PRESS", ...point });
+      void send({ action: "LONG_PRESS", ...point, ...streamMeta(video) });
     },
     [pointerEnabled, send, videoRef]
   );

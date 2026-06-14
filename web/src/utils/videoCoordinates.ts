@@ -79,3 +79,17 @@ export function swipeDurationMs(
   const distanceMs = Math.round(250 + distance * 900);
   return Math.min(900, Math.max(250, Math.max(elapsedMs, distanceMs)));
 }
+
+/** Attach stream dimensions so Android can verify coordinate scaling. */
+export function streamMeta(video: HTMLVideoElement): {
+  stream_width?: number;
+  stream_height?: number;
+} {
+  if (video.videoWidth > 0 && video.videoHeight > 0) {
+    return {
+      stream_width: video.videoWidth,
+      stream_height: video.videoHeight,
+    };
+  }
+  return {};
+}
