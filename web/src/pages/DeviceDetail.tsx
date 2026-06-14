@@ -27,6 +27,12 @@ export function DeviceDetail() {
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [lockModalOpen, setLockModalOpen] = useState(false);
   const [locking, setLocking] = useState(false);
+  const [deviceLocked, setDeviceLocked] = useState(false);
+  const [deviceLockedReason, setDeviceLockedReason] = useState<string | null>(
+    null
+  );
+  const [unlockPin, setUnlockPin] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
   const [streamLayoutHint, setStreamLayoutHint] = useState<StreamDimensions | null>(
     null
   );
@@ -66,16 +72,52 @@ export function DeviceDetail() {
   useEffect(() => {
     if (lastEvent?.event === "WEBRTC_READY") {
       setWebrtcReadySessionId(remoteSessionIdRef.current);
+      setDeviceLocked(false);
+      setDeviceLockedReason(null);
+      setUnlockPin("");
     }
     if (isLayoutEvent(String(lastEvent?.event))) {
       const dimensions = parseStreamDimensions(lastEvent?.payload);
       if (dimensions) setStreamLayoutHint(dimensions);
+    }
+    if (lastEvent?.event === "DEVICE_LOCKED") {
+      setDeviceLocked(true);
+      const payload = lastEvent.payload as Record<string, unknown> | undefined;
+      const reason =
+        typeof payload?.reason === "string"
+          ? payload.reason
+          : "PIN required for full access";
+      setDeviceLockedReason(reason);
+    }
+    if (lastEvent?.event === "COMMAND_HANDLED") {
+      const payload = lastEvent.payload as Record<string, unknown> | undefined;
+      const handledCommand =
+        typeof payload?.command === "string" ? payload.command : null;
+      if (handledCommand === "REMOTE_UNLOCK") {
+        setDeviceLocked(false);
+        setDeviceLockedReason(null);
+        setUnlockPin("");
+        setActionMessage("Unlock command processed — waiting for video stream…");
+      }
+    }
+    if (lastEvent?.event === "COMMAND_FAILED") {
+      const payload = lastEvent.payload as Record<string, unknown> | undefined;
+      const failedCommand =
+        typeof payload?.command === "string" ? payload.command : null;
+      const error =
+        typeof payload?.error === "string" ? payload.error : "Command failed";
+      if (failedCommand === "REMOTE_UNLOCK") {
+        setActionMessage(`Unlock failed: ${error}`);
+      }
     }
   }, [lastEvent]);
 
   useEffect(() => {
     if (!remoteActive) {
       setStreamLayoutHint(null);
+      setDeviceLocked(false);
+      setDeviceLockedReason(null);
+      setUnlockPin("");
     }
   }, [remoteActive]);
 
@@ -96,7 +138,12 @@ export function DeviceDetail() {
         setRemoteSessionId(remoteSessionIdRef.current);
         setWebrtcReadySessionId(0);
       }
-      if (command === "STOP_REMOTE_ADMIN") setRemoteActive(false);
+      if (command === "STOP_REMOTE_ADMIN") {
+        setRemoteActive(false);
+        setDeviceLocked(false);
+        setDeviceLockedReason(null);
+        setUnlockPin("");
+      }
       setActionMessage(
         result.delivery === "queued"
           ? `Command queued: ${command} — device is not on live WebSocket; it will receive this on the next poll (usually within ~30s). Remote assist requires a live WebSocket connection.`
@@ -105,6 +152,27 @@ export function DeviceDetail() {
       void refreshDeviceMeta();
     } catch (err) {
       setActionMessage(err instanceof Error ? err.message : "Command failed");
+    }
+  };
+
+  const handleRemoteUnlock = async () => {
+    if (!auth.user || !uid || !unlockPin.trim()) return;
+
+    setUnlocking(true);
+    setActionMessage(null);
+    try {
+      const result = await sendCommand(auth.user, uid, "REMOTE_UNLOCK", {
+        pin: unlockPin.trim(),
+      });
+      setActionMessage(
+        result.delivery === "queued"
+          ? "Unlock command queued — device will receive it on next poll."
+          : "Unlock command sent — device is entering the PIN…"
+      );
+    } catch (err) {
+      setActionMessage(err instanceof Error ? err.message : "Unlock failed");
+    } finally {
+      setUnlocking(false);
     }
   };
 
@@ -346,6 +414,33 @@ export function DeviceDetail() {
 
       <section className="panel">
         <h2>Remote assist</h2>
+        {remoteActive && deviceLocked && (
+          <div className="remote-unlock-panel">
+            <p className="remote-unlock-title">Device is locked</p>
+            <p className="remote-unlock-reason">
+              {deviceLockedReason ?? "PIN required for full access"}
+            </p>
+            <div className="remote-unlock-form">
+              <input
+                type="password"
+                className="remote-unlock-input"
+                placeholder="Device PIN"
+                value={unlockPin}
+                onChange={(event) => setUnlockPin(event.target.value)}
+                autoComplete="off"
+                aria-label="Device PIN"
+              />
+              <button
+                type="button"
+                className="btn-unlock"
+                disabled={unlocking || !unlockPin.trim()}
+                onClick={() => void handleRemoteUnlock()}
+              >
+                {unlocking ? "Unlocking…" : "Unlock"}
+              </button>
+            </div>
+          </div>
+        )}
         <RemoteViewer
           uid={device.uid}
           user={auth.user!}

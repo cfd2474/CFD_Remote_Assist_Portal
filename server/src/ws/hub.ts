@@ -4,6 +4,8 @@ import {
   setDeviceOnline,
   setRemoteAdminActive,
 } from "../services/devices.js";
+import { formatCommandForDevice } from "../services/commands.js";
+import type { CommandDeliveryOptions } from "../services/commands.js";
 import {
   normalizeSignaling,
   SIGNALING_HINT_PAYLOAD,
@@ -133,19 +135,18 @@ export class ConnectionHub {
     this.clients.delete(ws);
   }
 
-  sendCommand(uid: string, command: DeviceCommand, secret: string): boolean {
+  sendCommand(
+    uid: string,
+    command: DeviceCommand,
+    secret: string,
+    options?: CommandDeliveryOptions
+  ): boolean {
     const ws = this.devices.get(uid);
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       return false;
     }
 
-    ws.send(
-      JSON.stringify({
-        type: "command",
-        command,
-        connection_secret: secret,
-      })
-    );
+    ws.send(JSON.stringify(formatCommandForDevice(command, secret, options)));
 
     console.log(`Command sent via WebSocket: uid=${uid} command=${command}`);
 

@@ -47,7 +47,8 @@ export type DeviceCommand =
   | "START_REMOTE_ADMIN"
   | "STOP_REMOTE_ADMIN"
   | "LOCK_DEVICE"
-  | "RESYNC_DEVICE_INFO";
+  | "RESYNC_DEVICE_INFO"
+  | "REMOTE_UNLOCK";
 
 export interface ControlPacket {
   action: "CLICK" | "SWIPE" | "LONG_PRESS" | "KEY";

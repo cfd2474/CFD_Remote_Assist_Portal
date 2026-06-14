@@ -248,6 +248,12 @@ deviceApiRouter.post("/event", requireDeviceSecret, async (req, res) => {
 
   try {
     await recordEvent(body);
+    hub.relayDeviceEvent(body.uid, {
+      type: "device_event",
+      uid: body.uid,
+      event: body.event,
+      payload: body.payload,
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error("Event error:", err);

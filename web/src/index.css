@@ -664,6 +664,58 @@ button:hover {
   margin-bottom: 1rem;
 }
 
+.remote-unlock-panel {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+}
+
+.remote-unlock-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.remote-unlock-reason {
+  margin: 0 0 0.85rem;
+  color: var(--text-muted);
+}
+
+.remote-unlock-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.remote-unlock-input {
+  flex: 1;
+  min-width: 160px;
+  font: inherit;
+  color: #1a2332;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+}
+
+.btn-unlock {
+  background: #fb8c00;
+  color: #ffffff;
+  border: 1px solid var(--btn-border);
+}
+
+.btn-unlock:hover:not(:disabled) {
+  background: #ffa726;
+}
+
+.btn-unlock:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .event-log {
   margin: 0;
   padding: 1rem;

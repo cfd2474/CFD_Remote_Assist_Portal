@@ -55,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_pending_commands_uid ON pending_commands(uid, cre
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_location_accuracy_m REAL;
 ALTER TABLE telemetry_history ADD COLUMN IF NOT EXISTS accuracy_m REAL;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS agency TEXT;
+ALTER TABLE pending_commands ADD COLUMN IF NOT EXISTS command_payload JSONB;
 `;
 
 async function migrate() {

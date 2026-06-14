@@ -151,10 +151,24 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
     "STOP_REMOTE_ADMIN",
     "LOCK_DEVICE",
     "RESYNC_DEVICE_INFO",
+    "REMOTE_UNLOCK",
   ];
 
   if (!valid.includes(command)) {
     res.status(400).json({ error: "Invalid command" });
+    return;
+  }
+
+  const pin =
+    typeof req.body?.pin === "string" ? req.body.pin.trim() : undefined;
+
+  if (command === "REMOTE_UNLOCK") {
+    if (!pin) {
+      res.status(400).json({ error: "pin is required for REMOTE_UNLOCK" });
+      return;
+    }
+  } else if (pin) {
+    res.status(400).json({ error: "pin is only valid for REMOTE_UNLOCK" });
     return;
   }
 
@@ -165,10 +179,12 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
       return;
     }
 
+    const commandOptions = pin ? { pin } : undefined;
     const sent = hub.sendCommand(
       req.params.uid,
       command,
-      device.connection_secret
+      device.connection_secret,
+      commandOptions
     );
 
     if (command === "START_REMOTE_ADMIN") {
@@ -180,7 +196,12 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
     }
 
     if (!sent) {
-      await queueCommand(req.params.uid, command, device.connection_secret);
+      await queueCommand(
+        req.params.uid,
+        command,
+        device.connection_secret,
+        commandOptions
+      );
       res.json({
         ok: true,
         command,

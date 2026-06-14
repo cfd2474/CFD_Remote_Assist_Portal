@@ -47,14 +47,20 @@ export async function fetchDevice(user: User, uid: string): Promise<Device> {
 export async function sendCommand(
   user: User,
   uid: string,
-  command: DeviceCommand
+  command: DeviceCommand,
+  options?: { pin?: string }
 ): Promise<{ delivery: "websocket" | "queued" }> {
+  const body: { command: DeviceCommand; pin?: string } = { command };
+  if (options?.pin) {
+    body.pin = options.pin;
+  }
+
   const data = await apiFetch<{ delivery: "websocket" | "queued" }>(
     `/api/admin/devices/${uid}/command`,
     user,
     {
       method: "POST",
-      body: JSON.stringify({ command }),
+      body: JSON.stringify(body),
     }
   );
   return { delivery: data.delivery };
