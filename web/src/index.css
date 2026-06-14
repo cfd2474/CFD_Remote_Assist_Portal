@@ -92,6 +92,23 @@ button:hover {
   border-color: var(--danger);
 }
 
+.btn-lock {
+  background: #7a3a45;
+  border-color: #683240;
+  color: #fce8ea;
+}
+
+.btn-lock:hover {
+  background: #8f4550;
+  border-color: #7a3a45;
+  color: #fff;
+}
+
+.btn-lock:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-warning {
   background: var(--warning);
   border-color: var(--warning);

@@ -234,7 +234,7 @@ export function DeviceDetail() {
           )}
           <button
             type="button"
-            className="btn-warning"
+            className="btn-lock"
             disabled={locking}
             onClick={() => setLockModalOpen(true)}
           >
@@ -247,7 +247,7 @@ export function DeviceDetail() {
         open={lockModalOpen}
         title="Lock device?"
         confirmLabel="Lock device"
-        confirmClassName="btn-warning"
+        confirmClassName="btn-lock"
         onConfirm={() => void handleLockDevice()}
         onCancel={() => setLockModalOpen(false)}
       >
