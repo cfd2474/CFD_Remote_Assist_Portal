@@ -99,10 +99,14 @@ button:hover {
 }
 
 .app-header {
+  --header-y-pad: 0.5rem;
+  --header-height: 4.8125rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
+  min-height: var(--header-height);
+  padding: var(--header-y-pad) 1.5rem;
+  box-sizing: border-box;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -112,13 +116,14 @@ button:hover {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+  line-height: 0;
 }
 
 .header-brand-logo {
   display: block;
-  height: 36px;
+  height: calc(var(--header-height) - 2 * var(--header-y-pad));
   width: auto;
-  max-width: min(320px, 70vw);
+  max-width: none;
 }
 
 .header-user {
