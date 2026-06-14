@@ -50,7 +50,7 @@ export function DeviceList() {
           <table className="device-list">
             <thead>
               <tr>
-                <th>Device</th>
+                <th>Device name</th>
                 <th>Status</th>
                 <th>Model</th>
                 <th>Battery</th>
