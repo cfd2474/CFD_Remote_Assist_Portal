@@ -17,7 +17,7 @@ Push this app restrictions bundle to the CFD Assist Android app via your EMM/MDM
 |-----|--------|
 | `settings_password` | Your org-defined PIN to block local app settings |
 | `connection_secret` | Returned from `POST /api/v1/register` on first registration |
-| `tracking_server_url` | Device API base URL: `https://remote.tak-solutions.com` (port 443) |
+| `tracking_server_url` | Device API base URL: `https://remote.tak-solutions.com:8448` |
 | `tracking_interval` | Minutes between location pulses (e.g. `15`) |
 
 ## Registration flow
@@ -27,23 +27,21 @@ Push this app restrictions bundle to the CFD Assist Android app via your EMM/MDM
 3. Store returned `connection_secret` in MDM and push updated managed config.
 4. App uses `connection_secret` in `X-Connection-Secret` header for telemetry, events, and WebSocket auth.
 
-## Device API (HTTPS port 443)
+## Device API (HTTPS port 8448)
 
-Android devices use the **same hostname** as the admin portal — standard HTTPS port 443 (no custom port required):
+Android devices use the **same hostname** as the admin portal on dedicated port **8448** (avoids conflict with TAK Server admin on 8443 on infra-TAK hosts):
 
 | Endpoint | URL |
 |----------|-----|
-| Register | `POST https://remote.tak-solutions.com/api/v1/register` |
-| Ping | `GET` or `POST https://remote.tak-solutions.com/api/v1/ping` (pass `uid`) |
-| Telemetry | `POST https://remote.tak-solutions.com/api/v1/telemetry` |
-| Events | `POST https://remote.tak-solutions.com/api/v1/event` |
-| Health | `GET https://remote.tak-solutions.com/health` |
-| Commands poll | `GET https://remote.tak-solutions.com/api/v1/commands` |
-| WebSocket | `wss://remote.tak-solutions.com/ws/device` |
+| Register | `POST https://remote.tak-solutions.com:8448/api/v1/register` |
+| Ping | `GET` or `POST https://remote.tak-solutions.com:8448/api/v1/ping` (pass `uid`) |
+| Telemetry | `POST https://remote.tak-solutions.com:8448/api/v1/telemetry` |
+| Events | `POST https://remote.tak-solutions.com:8448/api/v1/event` |
+| Health | `GET https://remote.tak-solutions.com:8448/health` |
+| Commands poll | `GET https://remote.tak-solutions.com:8448/api/v1/commands` |
+| WebSocket | `wss://remote.tak-solutions.com:8448/ws/device` |
 
-Set MDM `tracking_server_url` to `https://remote.tak-solutions.com`.
-
-> Port **8443** remains available as a fallback if your network blocks non-standard ports.
+Set MDM `tracking_server_url` to `https://remote.tak-solutions.com:8448`.
 
 Registration request (no auth required):
 

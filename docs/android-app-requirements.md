@@ -14,16 +14,16 @@ Use this as the primary integration spec for app developers. Related docs:
 
 | Purpose | URL |
 |---------|-----|
-| **Base URL (MDM `tracking_server_url`)** | `https://remote.tak-solutions.com` |
+| **Base URL (MDM `tracking_server_url`)** | `https://remote.tak-solutions.com:8448` |
 | Register | `POST /api/v1/register` |
 | Ping | `GET` or `POST /api/v1/ping` |
 | Telemetry | `POST /api/v1/telemetry` |
 | Events | `POST /api/v1/event` |
 | Command poll | `GET /api/v1/commands` |
 | Health check | `GET /health` |
-| Device WebSocket | `wss://remote.tak-solutions.com/ws/device` |
+| Device WebSocket | `wss://remote.tak-solutions.com:8448/ws/device` |
 
-**Port 443 is required.** Do not hard-code port 8443 unless your network blocks 443 — 8443 is a fallback only.
+**Port 8448** is the dedicated device API port. Read `tracking_server_url` from MDM — do not hard-code the hostname or port.
 
 All requests must use **HTTPS/WSS** with valid TLS (Let's Encrypt on production).
 
@@ -35,7 +35,7 @@ Push these restriction keys via your EMM/MDM:
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `tracking_server_url` | string | `https://remote.tak-solutions.com` |
+| `tracking_server_url` | string | `https://remote.tak-solutions.com:8448` |
 | `connection_secret` | string | Hex secret from registration (see §3) |
 | `tracking_interval` | integer | Minutes between location telemetry (e.g. `15`) |
 | `settings_password` | string | Org-defined PIN to lock local app settings |
@@ -90,7 +90,7 @@ The server also accepts camelCase aliases: `androidId`, `deviceName`, `phoneNumb
 {
   "uid": "568b166b3dd461eb",
   "connection_secret": "a1b2c3d4e5f6...",
-  "tracking_server_url": "https://remote.tak-solutions.com",
+  "tracking_server_url": "https://remote.tak-solutions.com:8448",
   "message": "Device registered. Store connection_secret in MDM managed config."
 }
 ```
@@ -248,7 +248,7 @@ When the server restarts, queued commands are delivered on the next poll or on W
 
 ## 6. WebSocket (required)
 
-A **persistent WebSocket** to `wss://remote.tak-solutions.com/ws/device` is required for:
+A **persistent WebSocket** to `{tracking_server_url}/ws/device` (e.g. `wss://remote.tak-solutions.com:8448/ws/device`) is required for:
 
 - Instant command delivery (ping, locate, remote assist)
 - WebRTC signaling for remote screen viewing
@@ -864,7 +864,7 @@ Includes `RemoteControlHandler`, `PortalKeyParser`, `KeyInjector` (UiAutomation 
 ### Verify registration
 
 ```bash
-curl -sS -X POST https://remote.tak-solutions.com/api/v1/register \
+curl -sS -X POST https://remote.tak-solutions.com:8448/api/v1/register \
   -H 'Content-Type: application/json' \
   -d '{"uid":"test-device-001","device_name":"Test Device"}'
 ```
@@ -872,13 +872,13 @@ curl -sS -X POST https://remote.tak-solutions.com/api/v1/register \
 ### Verify ping
 
 ```bash
-curl -sS 'https://remote.tak-solutions.com/api/v1/ping?uid=<uid>'
+curl -sS 'https://remote.tak-solutions.com:8448/api/v1/ping?uid=<uid>'
 ```
 
 ### Verify authenticated telemetry
 
 ```bash
-curl -sS -X POST https://remote.tak-solutions.com/api/v1/telemetry \
+curl -sS -X POST https://remote.tak-solutions.com:8448/api/v1/telemetry \
   -H 'Content-Type: application/json' \
   -H 'X-Connection-Secret: <secret>' \
   -d '{"uid":"<uid>","battery":100,"lat":39.7,"lon":-104.9}'
@@ -887,14 +887,14 @@ curl -sS -X POST https://remote.tak-solutions.com/api/v1/telemetry \
 ### Verify command poll
 
 ```bash
-curl -sS https://remote.tak-solutions.com/api/v1/commands \
+curl -sS https://remote.tak-solutions.com:8448/api/v1/commands \
   -H 'X-Connection-Secret: <secret>'
 ```
 
 ### Verify WebSocket (wscat)
 
 ```bash
-wscat -c wss://remote.tak-solutions.com/ws/device
+wscat -c wss://remote.tak-solutions.com:8448/ws/device
 # then send:
 {"type":"auth","uid":"<uid>","connection_secret":"<secret>"}
 ```
@@ -914,7 +914,7 @@ Expected: `{"type":"auth_ok","uid":"..."}`
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Device not on dashboard | No register/telemetry traffic | Confirm `tracking_server_url` uses port 443 |
+| Device not on dashboard | No register/telemetry traffic | Confirm `tracking_server_url` uses port **8448** |
 | Commands always "queued" in portal | No live WebSocket | Implement persistent WS + auto-reconnect |
 | Ping works from app but portal ping queued | Same as above | WebSocket not connected |
 | Black screen on remote assist | No SDP answer from device | Send `{ type: "webrtc", sdp: { type: "answer", ... } }` |
@@ -929,8 +929,8 @@ Expected: `{"type":"auth_ok","uid":"..."}`
 | Item | Value |
 |------|-------|
 | Admin portal | `https://remote.tak-solutions.com` |
-| Device API base | `https://remote.tak-solutions.com` |
-| Device WebSocket | `wss://remote.tak-solutions.com/ws/device` |
+| Device API base | `https://remote.tak-solutions.com:8448` |
+| Device WebSocket | `wss://remote.tak-solutions.com:8448/ws/device` |
 | Auth header | `X-Connection-Secret` |
 | STUN server | `stun:stun.l.google.com:19302` |
 | Command poll interval | 30 seconds |

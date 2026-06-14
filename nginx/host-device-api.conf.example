@@ -1,10 +1,10 @@
-# Host nginx — dedicated Android device API (port 8443)
+# Host nginx — dedicated Android device API (port 8448)
 # Install: copy to /etc/nginx/sites-available/ on the Ubuntu host
 # Uses the same TLS cert as the admin portal.
 
 server {
-    listen 8443 ssl;
-    listen [::]:8443 ssl;
+    listen 8448 ssl;
+    listen [::]:8448 ssl;
     server_name remote.tak-solutions.com;
 
     ssl_certificate /etc/letsencrypt/live/remote.tak-solutions.com/fullchain.pem;

@@ -6,26 +6,26 @@ This document maps the Android (EUD) app server requirements to the deployed CFD
 
 | # | EUD requirement | Status | Implementation |
 |---|-----------------|--------|----------------|
-| 1 | HTTPS listener with valid TLS | **Met** | Nginx + Let's Encrypt on port **8443** (devices) and **443** (admin portal) |
+| 1 | HTTPS listener with valid TLS | **Met** | Nginx + Let's Encrypt on port **8448** (devices) and **443** (admin portal) |
 | 2 | `POST /api/v1/register` | **Met** | Node.js API accepts JSON payload (uid, serial, IMEI, device_name, model, etc.) |
-| 3 | Firewall port open | **Met** | Port **8443/tcp** exposed (nginx listens on `0.0.0.0:8443`). Use `ufw allow 8443/tcp` if UFW is enabled. |
+| 3 | Firewall port open | **Met** | Port **8448/tcp** exposed (nginx listens on `0.0.0.0:8448`). Use `ufw allow 8448/tcp` if UFW is enabled. |
 | 4 | Database with UID primary key | **Met** | PostgreSQL `devices` table — `uid TEXT PRIMARY KEY` |
-| 5 | Network access for devices | **Met** | Public HTTPS endpoint; devices need cellular/Wi‑Fi route to `remote.tak-solutions.com:8443` |
+| 5 | Network access for devices | **Met** | Public HTTPS endpoint; devices need cellular/Wi‑Fi route to `remote.tak-solutions.com:8448` |
 
-> **Note on port:** The EUD doc uses port 8080 as an example. This deployment uses **8443** for device traffic so it does not conflict with other services on the host. Configure the app/MDM `tracking_server_url` accordingly — the path `/api/v1/register` is unchanged.
+> **Note on port:** The EUD doc uses port 8080 as an example. This deployment uses **8448** for device traffic so it does not conflict with TAK Server admin (**8443**) or other services on infra-TAK hosts. Configure the app/MDM `tracking_server_url` accordingly — the path `/api/v1/register` is unchanged.
 
 ---
 
 ## 1. HTTPS listener
 
-- **Device API base URL:** `https://remote.tak-solutions.com:8443`
+- **Device API base URL:** `https://remote.tak-solutions.com:8448`
 - **Certificate:** Let's Encrypt (valid for `remote.tak-solutions.com`)
 - **Stack:** Host nginx (TLS termination) → Docker nginx (`127.0.0.1:8091`) → Node.js API
 
 Verify:
 
 ```bash
-curl https://remote.tak-solutions.com:8443/health
+curl https://remote.tak-solutions.com:8448/health
 # {"status":"ok","service":"cfd-remote-assist"}
 ```
 
@@ -33,7 +33,7 @@ curl https://remote.tak-solutions.com:8443/health
 
 ## 2. Registration API endpoint
 
-**URL:** `POST https://remote.tak-solutions.com:8443/api/v1/register`
+**URL:** `POST https://remote.tak-solutions.com:8448/api/v1/register`
 
 **Authentication:** None (first-time registration)
 
@@ -59,7 +59,7 @@ Required fields: `uid`, `device_name`
 {
   "uid": "3a5f92b...",
   "connection_secret": "<hex-secret>",
-  "tracking_server_url": "https://remote.tak-solutions.com:8443",
+  "tracking_server_url": "https://remote.tak-solutions.com:8448",
   "message": "Device registered. Store connection_secret in MDM managed config."
 }
 ```
@@ -73,11 +73,11 @@ On the Ubuntu host, if using UFW:
 ```bash
 sudo ufw allow 22/tcp    # SSH
 sudo ufw allow 443/tcp   # Admin portal
-sudo ufw allow 8443/tcp # Android device API
+sudo ufw allow 8448/tcp # Android device API
 sudo ufw enable
 ```
 
-Device traffic uses **8443**, not 8080. Port 8080 on this host is reserved for an internal service (pref configurator) and is not exposed publicly.
+Device traffic uses **8448**, not 8080. Port 8080 on this host is reserved for an internal service (pref configurator) and is not exposed publicly.
 
 ---
 
@@ -105,11 +105,11 @@ Stored at registration:
 
 ## 5. Network access
 
-Devices must reach `remote.tak-solutions.com` on port **8443** over HTTPS:
+Devices must reach `remote.tak-solutions.com` on port **8448** over HTTPS:
 
 - Corporate Wi‑Fi or cellular data with outbound HTTPS allowed
 - VPN not required (server is public-facing)
-- MDM managed config key `tracking_server_url` = `https://remote.tak-solutions.com:8443`
+- MDM managed config key `tracking_server_url` = `https://remote.tak-solutions.com:8448`
 
 After registration, subsequent calls use:
 
@@ -125,7 +125,7 @@ After registration, subsequent calls use:
 ## MDM configuration summary
 
 ```text
-tracking_server_url = https://remote.tak-solutions.com:8443
+tracking_server_url = https://remote.tak-solutions.com:8448
 connection_secret   = <from registration response>
 tracking_interval   = 15
 ```
