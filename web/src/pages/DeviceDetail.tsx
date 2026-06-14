@@ -8,6 +8,7 @@ import { RemoteViewer } from "../components/RemoteViewer";
 import type { Device } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
 import { formatDeviceModel } from "../utils/deviceModelNames";
+import { formatPhoneNumber } from "../utils/formatPhoneNumber";
 import type { StreamDimensions } from "../utils/streamDimensions";
 
 export function DeviceDetail() {
@@ -211,16 +212,8 @@ export function DeviceDetail() {
               <dd>{device.uid}</dd>
             </div>
             <div>
-              <dt>Serial</dt>
-              <dd>{device.serial ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>IMEI</dt>
-              <dd>{device.imei ?? "—"}</dd>
-            </div>
-            <div>
               <dt>Phone</dt>
-              <dd>{device.phone_number ?? "—"}</dd>
+              <dd>{formatPhoneNumber(device.phone_number)}</dd>
             </div>
             <div>
               <dt>Model</dt>
