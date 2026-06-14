@@ -107,11 +107,18 @@ button:hover {
   border-bottom: 1px solid var(--border);
 }
 
-.header-brand a {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--text);
+.header-brand a,
+.header-brand-link {
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
+}
+
+.header-brand-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  max-width: min(320px, 70vw);
 }
 
 .header-user {
@@ -499,8 +506,16 @@ button:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 2rem;
-  max-width: 400px;
+  max-width: 440px;
   text-align: center;
+}
+
+.login-logo {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 0 auto 1.25rem;
 }
 
 .login-card h1 {

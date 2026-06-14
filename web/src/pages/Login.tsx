@@ -6,8 +6,12 @@ export function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>CFD Remote Assist</h1>
-        <p>Sign in with your organization account to manage managed Android devices.</p>
+        <img
+          src="/eud-remote-assist-banner.png"
+          alt="EUD Remote Assist"
+          className="login-logo"
+        />
+        <p>Sign in with your organization account to manage enrolled Android devices.</p>
         <button
           type="button"
           className="btn-primary"

@@ -9,7 +9,13 @@ export function Layout() {
     <div className="app-shell">
       <header className="app-header">
         <div className="header-brand">
-          <Link to="/">CFD Remote Assist</Link>
+          <Link to="/" className="header-brand-link">
+            <img
+              src="/eud-remote-assist-banner.png"
+              alt="EUD Remote Assist"
+              className="header-brand-logo"
+            />
+          </Link>
         </div>
         <div className="header-user">
           <span>{profile?.name ?? profile?.email ?? "Admin"}</span>
