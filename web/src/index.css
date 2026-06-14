@@ -180,6 +180,60 @@ button:hover {
   font-weight: 600;
 }
 
+.device-list-filter-row th {
+  padding: 0.5rem 0.75rem 0.35rem;
+  border-bottom: none;
+  vertical-align: bottom;
+}
+
+.device-list-filter {
+  width: 100%;
+  min-width: 120px;
+  font: inherit;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+}
+
+.device-list-filter::placeholder {
+  color: var(--text-muted);
+}
+
+.device-list-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.device-list-sort:hover {
+  color: var(--text);
+}
+
+.device-list-sort.active {
+  color: var(--accent);
+}
+
+.device-list-sort-indicator {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
 .device-list tbody tr:hover {
   background: var(--surface-2);
 }
