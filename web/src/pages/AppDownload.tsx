@@ -91,13 +91,6 @@ export function AppDownload() {
           </div>
         </section>
       )}
-
-      <section className="panel app-download-screenshots">
-        <h2>Screenshots</h2>
-        <p className="app-download-screenshots-placeholder">
-          Screenshots will be added here soon.
-        </p>
-      </section>
     </div>
   );
 }
