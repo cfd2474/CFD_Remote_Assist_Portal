@@ -685,7 +685,8 @@ button:hover {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  z-index: 1000;
+  /* Above Leaflet map panes/controls (top ~1000). */
+  z-index: 10000;
 }
 
 .modal-dialog {

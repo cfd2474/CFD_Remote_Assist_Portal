@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -23,7 +24,7 @@ export function ConfirmModal({
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" role="presentation" onClick={onCancel}>
       <div
         className="modal-dialog"
@@ -47,6 +48,7 @@ export function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
