@@ -1,5 +1,5 @@
 import type { User } from "oidc-client-ts";
-import type { ControlPacket, Device, DeviceCommand, LocationHistoryPoint, SignalingStatus } from "../types";
+import type { ControlPacket, Device, DeviceCommand, LatestApkRelease, LocationHistoryPoint, SignalingStatus } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -128,4 +128,12 @@ export async function fetchLocationHistory(
     user
   );
   return data.points;
+}
+
+export async function fetchLatestApk(user: User): Promise<LatestApkRelease> {
+  const data = await apiFetch<{ apk: LatestApkRelease }>(
+    "/api/admin/app/latest-apk",
+    user
+  );
+  return data.apk;
 }

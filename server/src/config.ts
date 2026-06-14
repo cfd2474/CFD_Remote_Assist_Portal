@@ -19,4 +19,8 @@ export const config = {
   },
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   commandSecretHeader: "x-connection-secret",
+  github: {
+    repo: process.env.GITHUB_APK_REPO ?? "cfd2474/CFD_Remote_Assist_Portal",
+    token: process.env.GITHUB_TOKEN || undefined,
+  },
 };

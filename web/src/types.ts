@@ -73,3 +73,10 @@ export interface LocationHistoryPoint {
   accuracy_m: number | null;
   recorded_at: string;
 }
+
+export interface LatestApkRelease {
+  version: string;
+  filename: string;
+  downloadUrl: string;
+  releaseTag: string;
+}

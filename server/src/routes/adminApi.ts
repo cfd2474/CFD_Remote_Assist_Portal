@@ -13,6 +13,7 @@ import { hub } from "../ws/hub.js";
 import { queueCommand } from "../services/commands.js";
 import { setRemoteSessionActive, getSignalingStatus, getSignalingReplay } from "../services/signalingSession.js";
 import { reverseGeocode } from "../services/geocode.js";
+import { getLatestApkRelease } from "../services/githubReleases.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
 export const adminApiRouter = Router();
@@ -288,4 +289,18 @@ adminApiRouter.get("/me", (req, res) => {
       name: req.adminUser?.name,
     },
   });
+});
+
+adminApiRouter.get("/app/latest-apk", async (_req, res) => {
+  try {
+    const latest = await getLatestApkRelease();
+    if (!latest) {
+      res.status(404).json({ error: "No APK release found on GitHub" });
+      return;
+    }
+    res.json({ apk: latest });
+  } catch (err) {
+    console.error("Latest APK lookup error:", err);
+    res.status(502).json({ error: "Failed to fetch latest APK from GitHub" });
+  }
 });
