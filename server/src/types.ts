@@ -25,6 +25,21 @@ export interface DeviceEventPayload {
   payload?: Record<string, unknown>;
 }
 
+export interface LocationHistoryPoint {
+  lat: number;
+  lon: number;
+  accuracy_m: number | null;
+  recorded_at: Date;
+}
+
+export interface SampledLocationPoint {
+  number: number;
+  lat: number;
+  lon: number;
+  accuracy_m: number | null;
+  recorded_at: string;
+}
+
 export type DeviceCommand =
   | "TRIGGER_PING"
   | "REQUEST_LOCATION"

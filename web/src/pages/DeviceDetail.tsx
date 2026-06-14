@@ -254,6 +254,7 @@ export function DeviceDetail() {
           <h2>Location</h2>
           {hasLocation ? (
             <DeviceLocationPanel
+              uid={device.uid}
               lat={device.last_lat!}
               lon={device.last_lon!}
               accuracyM={device.last_location_accuracy_m}

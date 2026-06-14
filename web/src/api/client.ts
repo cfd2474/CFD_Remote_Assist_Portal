@@ -1,5 +1,5 @@
 import type { User } from "oidc-client-ts";
-import type { ControlPacket, Device, DeviceCommand, SignalingStatus } from "../types";
+import type { ControlPacket, Device, DeviceCommand, LocationHistoryPoint, SignalingStatus } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -111,4 +111,21 @@ export async function fetchReverseGeocode(
     `/api/admin/geocode/reverse?${params}`,
     user
   );
+}
+
+export async function fetchLocationHistory(
+  user: User,
+  uid: string,
+  fromAt: Date,
+  toAt: Date
+): Promise<LocationHistoryPoint[]> {
+  const params = new URLSearchParams({
+    from_at: fromAt.toISOString(),
+    to_at: toAt.toISOString(),
+  });
+  const data = await apiFetch<{ points: LocationHistoryPoint[] }>(
+    `/api/admin/devices/${uid}/location-history?${params}`,
+    user
+  );
+  return data.points;
 }

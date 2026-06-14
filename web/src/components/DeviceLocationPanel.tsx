@@ -1,9 +1,11 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { User } from "oidc-client-ts";
 import { fetchReverseGeocode } from "../api/client";
 import { DeviceMap } from "./DeviceMap";
 
 interface DeviceLocationPanelProps {
+  uid: string;
   lat: number;
   lon: number;
   accuracyM: number | null;
@@ -12,6 +14,7 @@ interface DeviceLocationPanelProps {
 }
 
 export function DeviceLocationPanel({
+  uid,
   lat,
   lon,
   accuracyM,
@@ -79,6 +82,9 @@ export function DeviceLocationPanel({
         </div>
       </dl>
       <DeviceMap lat={lat} lon={lon} label={label} />
+      <p className="location-history-link">
+        <Link to={`/devices/${uid}/location-history`}>Location history</Link>
+      </p>
     </>
   );
 }

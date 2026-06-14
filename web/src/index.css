@@ -546,3 +546,117 @@ button:hover {
 .signaling-trace th {
   background: var(--surface-2);
 }
+
+.breadcrumb {
+  margin: 0 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.location-history-link {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+}
+
+.location-history-filters .filter-hint {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.filter-field select,
+.filter-field input[type="date"] {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+
+.location-history-map {
+  height: 420px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.location-history-map .leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.location-marker-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.location-marker-badge.selected {
+  background: var(--warning);
+  transform: scale(1.12);
+}
+
+.location-history-table-wrap {
+  overflow-x: auto;
+}
+
+.location-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.location-history-table th,
+.location-history-table td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+}
+
+.location-history-table th {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.location-history-row {
+  cursor: pointer;
+}
+
+.location-history-row:hover {
+  background: var(--surface-2);
+}
+
+.location-history-row.selected {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+
+.no-records {
+  text-transform: lowercase;
+}

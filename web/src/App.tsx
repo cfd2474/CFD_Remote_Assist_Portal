@@ -3,6 +3,7 @@ import { useAuth } from "react-oidc-context";
 import { Layout } from "./components/Layout";
 import { DeviceList } from "./pages/DeviceList";
 import { DeviceDetail } from "./pages/DeviceDetail";
+import { DeviceLocationHistory } from "./pages/DeviceLocationHistory";
 import { Callback } from "./pages/Callback";
 import { Login } from "./pages/Login";
 
@@ -35,6 +36,7 @@ export default function App() {
         >
           <Route index element={<DeviceList />} />
           <Route path="devices/:uid" element={<DeviceDetail />} />
+          <Route path="devices/:uid/location-history" element={<DeviceLocationHistory />} />
         </Route>
       </Routes>
     </BrowserRouter>

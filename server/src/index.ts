@@ -8,7 +8,7 @@ import { config } from "./config.js";
 import { deviceApiRouter } from "./routes/deviceApi.js";
 import { adminApiRouter } from "./routes/adminApi.js";
 import { attachWebSocketHandlers } from "./ws/handlers.js";
-import { resetLiveSessionFlags } from "./services/devices.js";
+import { resetLiveSessionFlags, purgeOldLocationHistory } from "./services/devices.js";
 
 const app = express();
 
@@ -82,7 +82,25 @@ server.on("upgrade", (req, socket, head) => {
   socket.destroy();
 });
 
-void resetLiveSessionFlags().then(() => {
+const LOCATION_HISTORY_PURGE_MS = 24 * 60 * 60 * 1000;
+
+async function runLocationHistoryPurge(): Promise<void> {
+  try {
+    const deleted = await purgeOldLocationHistory();
+    if (deleted > 0) {
+      console.log(
+        `Purged ${deleted} location history record(s) older than 30 days`
+      );
+    }
+  } catch (err) {
+    console.error("Location history purge failed:", err);
+  }
+}
+
+void resetLiveSessionFlags().then(async () => {
+  await runLocationHistoryPurge();
+  setInterval(runLocationHistoryPurge, LOCATION_HISTORY_PURGE_MS);
+
   server.listen(config.port, () => {
     console.log(`CFD Remote Assist server listening on port ${config.port}`);
   });

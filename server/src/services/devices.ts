@@ -5,7 +5,12 @@ import type {
   DeviceRow,
   TelemetryPayload,
   DeviceEventPayload,
+  LocationHistoryPoint,
+  SampledLocationPoint,
 } from "../types.js";
+import {
+  downsampleLocationHistory,
+} from "./locationHistory.js";
 
 function generateConnectionSecret(): string {
   return randomBytes(32).toString("hex");
@@ -201,6 +206,50 @@ export async function getTelemetryHistory(
     [uid, limit]
   );
   return result.rows;
+}
+
+export async function getLocationHistory(
+  uid: string,
+  fromAt: Date,
+  toAt: Date
+): Promise<SampledLocationPoint[]> {
+  const result = await pool.query<{
+    lat: number;
+    lon: number;
+    accuracy_m: number | null;
+    recorded_at: Date;
+  }>(
+    `SELECT lat, lon, accuracy_m, recorded_at
+     FROM telemetry_history
+     WHERE uid = $1
+       AND lat IS NOT NULL
+       AND lon IS NOT NULL
+       AND recorded_at >= $2
+       AND recorded_at <= $3
+     ORDER BY recorded_at DESC`,
+    [uid, toAt, fromAt]
+  );
+
+  const points: LocationHistoryPoint[] = result.rows.map((row) => ({
+    lat: row.lat,
+    lon: row.lon,
+    accuracy_m: row.accuracy_m,
+    recorded_at: row.recorded_at,
+  }));
+
+  return downsampleLocationHistory(points);
+}
+
+export const LOCATION_HISTORY_RETENTION_DAYS = 30;
+
+/** Remove telemetry history rows older than the retention window. */
+export async function purgeOldLocationHistory(): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM telemetry_history
+     WHERE recorded_at < NOW() - ($1 * INTERVAL '1 day')`,
+    [LOCATION_HISTORY_RETENTION_DAYS]
+  );
+  return result.rowCount ?? 0;
 }
 
 export async function getDeviceEvents(uid: string, limit = 50): Promise<unknown[]> {

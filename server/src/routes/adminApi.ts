@@ -4,6 +4,7 @@ import {
   listDevices,
   getDevice,
   getTelemetryHistory,
+  getLocationHistory,
   getDeviceEvents,
   deleteDevice,
   setRemoteAdminActive,
@@ -75,6 +76,43 @@ adminApiRouter.get("/devices/:uid/telemetry", async (req, res) => {
   } catch (err) {
     console.error("Telemetry history error:", err);
     res.status(500).json({ error: "Failed to get telemetry history" });
+  }
+});
+
+adminApiRouter.get("/devices/:uid/location-history", async (req, res) => {
+  const fromAtRaw = req.query.from_at as string | undefined;
+  const toAtRaw = req.query.to_at as string | undefined;
+
+  if (!fromAtRaw || !toAtRaw) {
+    res.status(400).json({ error: "from_at and to_at are required ISO timestamps" });
+    return;
+  }
+
+  const fromAt = new Date(fromAtRaw);
+  const toAt = new Date(toAtRaw);
+
+  if (Number.isNaN(fromAt.getTime()) || Number.isNaN(toAt.getTime())) {
+    res.status(400).json({ error: "Invalid from_at or to_at" });
+    return;
+  }
+
+  if (toAt.getTime() > fromAt.getTime()) {
+    res.status(400).json({ error: "to_at must be on or before from_at" });
+    return;
+  }
+
+  try {
+    const device = await getDevice(req.params.uid);
+    if (!device) {
+      res.status(404).json({ error: "Device not found" });
+      return;
+    }
+
+    const points = await getLocationHistory(req.params.uid, fromAt, toAt);
+    res.json({ points });
+  } catch (err) {
+    console.error("Location history error:", err);
+    res.status(500).json({ error: "Failed to get location history" });
   }
 });
 

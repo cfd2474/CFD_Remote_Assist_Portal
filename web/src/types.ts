@@ -62,3 +62,11 @@ export interface SignalingStatus {
   issues: string[];
   deviceWsConnected: boolean;
 }
+
+export interface LocationHistoryPoint {
+  number: number;
+  lat: number;
+  lon: number;
+  accuracy_m: number | null;
+  recorded_at: string;
+}
