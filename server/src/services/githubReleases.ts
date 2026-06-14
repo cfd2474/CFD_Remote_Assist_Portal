@@ -20,7 +20,7 @@ interface GitHubRelease {
 type SemverTriple = [number, number, number];
 
 function parseApkVersion(filename: string): SemverTriple | null {
-  const match = filename.match(/\.(\d+)\.(\d+)\.(\d+)\.apk$/i);
+  const match = filename.match(/(\d+)\.(\d+)\.(\d+)\.apk$/i);
   if (!match) {
     return null;
   }
