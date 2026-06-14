@@ -100,6 +100,18 @@ button:hover {
   color: #061828;
 }
 
+.btn-resync {
+  background: var(--accent);
+  border-color: var(--btn-border);
+  color: #001428;
+}
+
+.btn-resync:hover {
+  background: var(--accent-hover);
+  border-color: var(--btn-border);
+  color: #001428;
+}
+
 .btn-danger {
   background: var(--danger);
   border-color: var(--btn-border);

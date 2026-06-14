@@ -353,6 +353,63 @@ Verify `connection_secret` matches the device's stored secret before acting (def
 | `START_REMOTE_ADMIN` | Start screen capture + WebRTC session (§8) |
 | `STOP_REMOTE_ADMIN` | Tear down WebRTC and screen capture immediately |
 | `LOCK_DEVICE` | Tear down remote assist if active, then lock the device screen |
+| `RESYNC_DEVICE_INFO` | Re-post current device metadata via `POST /api/v1/register` (see §7.1) |
+
+### 7.1 `RESYNC_DEVICE_INFO` (portal: “Resync Device Info”)
+
+Admin sends this when device metadata on the portal may be stale (e.g. agency, phone number, or device name changed on the device or in MDM).
+
+**Incoming command (WebSocket or queued in telemetry/commands poll):**
+
+```json
+{
+  "type": "command",
+  "command": "RESYNC_DEVICE_INFO",
+  "connection_secret": "a1b2c3d4e5f6..."
+}
+```
+
+**Required app behavior:**
+
+1. Verify `connection_secret` matches the locally stored secret (same as other commands).
+2. Collect the **current** device metadata (same fields used for initial registration).
+3. Call `POST {tracking_server_url}/api/v1/register` with a full registration body. **Do not** treat this as a new enrollment — use the existing `uid` (Android ID). The server updates the existing record and returns **200** with the same `connection_secret`.
+4. Include every field the app knows at registration time, especially any that may have changed:
+
+```json
+{
+  "uid": "568b166b3dd461eb",
+  "device_name": "Galaxy XCover6 Pro",
+  "model": "SM-G736U1",
+  "agency": "City Fire Department",
+  "phone_number": "19512278442",
+  "app_version": "1.0.0",
+  "serial": "…",
+  "imei": "…"
+}
+```
+
+Only `uid` and `device_name` are strictly required by the server; send `agency`, `phone_number`, `model`, and `app_version` whenever available so the portal list and device detail stay accurate.
+
+5. **Optional but recommended:** POST an event after successful register:
+
+```json
+{
+  "uid": "568b166b3dd461eb",
+  "event": "DEVICE_INFO_RESYNCED",
+  "payload": {
+    "command": "RESYNC_DEVICE_INFO",
+    "agency": "City Fire Department",
+    "device_name": "Galaxy XCover6 Pro"
+  }
+}
+```
+
+6. If register fails, POST `event: "COMMAND_FAILED"` with `{ "command": "RESYNC_DEVICE_INFO", "error": "…" }` or retry on the next telemetry cycle.
+
+**Does not:** start remote assist, request location, play sound, or lock the device. Safe to run while idle or online on WebSocket.
+
+**Portal delivery:** WebSocket when live; otherwise queued until the next `POST /api/v1/telemetry` or `GET /api/v1/commands` response (same as other commands).
 
 After handling any command, POST an event if useful for admin visibility:
 
@@ -788,6 +845,8 @@ Includes `RemoteControlHandler`, `PortalKeyParser`, `KeyInjector` (UiAutomation 
 - [ ] `REQUEST_LOCATION` — POST telemetry with current fix
 - [ ] `START_REMOTE_ADMIN` — start capture + WebRTC
 - [ ] `STOP_REMOTE_ADMIN` — stop capture + WebRTC
+- [ ] `LOCK_DEVICE` — tear down remote assist if active, then lock screen
+- [ ] `RESYNC_DEVICE_INFO` — POST `/api/v1/register` with current metadata (§7.1)
 
 ### Remote assist
 

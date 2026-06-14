@@ -135,6 +135,7 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
     "START_REMOTE_ADMIN",
     "STOP_REMOTE_ADMIN",
     "LOCK_DEVICE",
+    "RESYNC_DEVICE_INFO",
   ];
 
   if (!valid.includes(command)) {

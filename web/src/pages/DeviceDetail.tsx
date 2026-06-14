@@ -235,6 +235,13 @@ export function DeviceDetail() {
           )}
           <button
             type="button"
+            className="btn-resync"
+            onClick={() => void runCommand("RESYNC_DEVICE_INFO")}
+          >
+            Resync Device Info
+          </button>
+          <button
+            type="button"
             className="btn-lock"
             disabled={locking}
             onClick={() => setLockModalOpen(true)}
