@@ -293,13 +293,6 @@ export function DeviceDetail() {
         />
       </section>
 
-      {lastEvent && (
-        <section className="panel">
-          <h2>Latest event</h2>
-          <pre className="event-log">{JSON.stringify(lastEvent, null, 2)}</pre>
-        </section>
-      )}
-
       <section className="panel panel-danger">
         <h2>Remove device</h2>
         <p>
