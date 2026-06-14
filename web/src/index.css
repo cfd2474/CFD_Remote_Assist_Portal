@@ -113,13 +113,13 @@ button:hover {
 }
 
 .btn-disconnect {
-  background: #1565c0;
+  background: #e53935;
   border-color: var(--btn-border);
   color: #fff;
 }
 
 .btn-disconnect:hover {
-  background: #1976d2;
+  background: #ef5350;
   border-color: var(--btn-border);
   color: #fff;
 }
