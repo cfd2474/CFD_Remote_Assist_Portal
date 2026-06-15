@@ -234,22 +234,80 @@ button:hover {
 
 .app-subheader {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   padding: 0.45rem 1.5rem;
   background: var(--brand-bg);
   border-bottom: 1px solid #14325c;
 }
 
-.app-download-nav-link {
+.app-subheader-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.app-subheader-link {
   font-size: 0.875rem;
   color: var(--accent);
   text-decoration: none;
 }
 
-.app-download-nav-link:hover {
+.app-subheader-link:hover {
   color: var(--accent-hover);
   text-decoration: underline;
+}
+
+.documentation-panel {
+  padding: 1.25rem 1.5rem;
+}
+
+.documentation-guide-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.documentation-guide-item {
+  margin: 0;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.documentation-guide-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.documentation-guide-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.documentation-guide-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.documentation-guide-external {
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.documentation-guide-description {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  max-width: 42rem;
 }
 
 .app-main {
