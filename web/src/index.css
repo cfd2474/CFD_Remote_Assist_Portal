@@ -310,6 +310,154 @@ button:hover {
   max-width: 42rem;
 }
 
+.documentation-guide-back {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.documentation-guide-header h1 {
+  margin-top: 0;
+}
+
+.guide-panel {
+  padding: 1.5rem 1.75rem;
+  max-width: 52rem;
+}
+
+.guide-content {
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.guide-content > :first-child {
+  margin-top: 0;
+}
+
+.guide-content h1 {
+  font-size: 1.65rem;
+  margin: 0 0 1rem;
+  line-height: 1.25;
+}
+
+.guide-content h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.guide-content h3 {
+  font-size: 1.05rem;
+  margin: 1.5rem 0 0.5rem;
+  color: var(--accent);
+}
+
+.guide-content p {
+  margin: 0.75rem 0;
+}
+
+.guide-content ul,
+.guide-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.35rem;
+}
+
+.guide-content li {
+  margin: 0.35rem 0;
+}
+
+.guide-content li::marker {
+  color: var(--accent);
+}
+
+.guide-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.75rem 0;
+}
+
+.guide-content blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--brand-bg));
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-muted);
+}
+
+.guide-content blockquote p {
+  margin: 0;
+}
+
+.guide-content code {
+  font-family: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+.guide-content pre {
+  margin: 1rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--brand-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.guide-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.guide-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+
+.guide-content th,
+.guide-content td {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.guide-content th {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.guide-content tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.guide-content em {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+.guide-content strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.guide-content a {
+  color: var(--accent);
+}
+
+.guide-content a:hover {
+  color: var(--accent-hover);
+}
+
 .app-main {
   flex: 1;
   padding: 1.5rem;

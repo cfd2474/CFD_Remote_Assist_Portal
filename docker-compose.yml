@@ -37,7 +37,8 @@ services:
 
   web:
     build:
-      context: ./web
+      context: .
+      dockerfile: web/Dockerfile
       args:
         VITE_OIDC_AUTHORITY: ${OIDC_ISSUER}
         VITE_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-cfd-remote-assist}

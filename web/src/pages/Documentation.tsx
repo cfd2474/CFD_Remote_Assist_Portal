@@ -1,4 +1,5 @@
-import { documentationGuides } from "../config/documentationGuides";
+import { Link } from "react-router-dom";
+import { documentationGuides } from "../guides";
 
 export function Documentation() {
   return (
@@ -11,18 +12,15 @@ export function Documentation() {
       <section className="panel documentation-panel">
         <ul className="documentation-guide-list">
           {documentationGuides.map((guide) => (
-            <li key={guide.href} className="documentation-guide-item">
-              <a
-                href={guide.href}
+            <li key={guide.slug} className="documentation-guide-item">
+              <Link
+                to={`/documentation/${guide.slug}`}
                 className="documentation-guide-link"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {guide.title}
-                <span className="documentation-guide-external" aria-hidden="true">
-                  ↗
-                </span>
-              </a>
+              </Link>
               <p className="documentation-guide-description">{guide.description}</p>
             </li>
           ))}

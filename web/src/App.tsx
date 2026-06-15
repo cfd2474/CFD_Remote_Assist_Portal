@@ -6,6 +6,7 @@ import { DeviceDetail } from "./pages/DeviceDetail";
 import { DeviceLocationHistory } from "./pages/DeviceLocationHistory";
 import { AppDownload } from "./pages/AppDownload";
 import { Documentation } from "./pages/Documentation";
+import { DocumentationGuideView } from "./pages/DocumentationGuideView";
 import { Callback } from "./pages/Callback";
 import { Login } from "./pages/Login";
 
@@ -38,6 +39,7 @@ export default function App() {
         >
           <Route index element={<DeviceList />} />
           <Route path="documentation" element={<Documentation />} />
+          <Route path="documentation/:slug" element={<DocumentationGuideView />} />
           <Route path="download" element={<AppDownload />} />
           <Route path="devices/:uid" element={<DeviceDetail />} />
           <Route path="devices/:uid/location-history" element={<DeviceLocationHistory />} />
