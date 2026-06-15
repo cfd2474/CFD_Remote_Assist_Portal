@@ -725,6 +725,17 @@ button:hover {
   word-break: break-all;
 }
 
+.info-list-app-version .app-version-update-banner {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--warning);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .location-info {
   margin-bottom: 0;
 }

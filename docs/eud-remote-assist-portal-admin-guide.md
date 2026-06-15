@@ -1,6 +1,6 @@
 # EUD Remote Assist Portal — Administrator Guide
 
-**Release 2.2.4**
+**Release 2.2.5**
 
 The Remote Assist Portal is the web console for managing your fleet of company-owned Android devices. From a single browser you can see where every device is, confirm it's online, push a ping or location request, and take live control of the screen for hands-on support.
 

@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.5 -->
+## Version 2.2.5
+
+**Portal**
+
+- Device detail pages compare installed app version against the current APK release.
+- Shows a yellow **Newer application version available** banner when the published APK is newer.
+
+<!-- RELEASE_END version=2.2.5 -->
+
 <!-- RELEASE_START version=2.2.4 -->
 ## Version 2.2.4
 

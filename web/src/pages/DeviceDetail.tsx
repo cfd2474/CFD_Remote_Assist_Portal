@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { fetchDevice, removeDevice, sendCommand } from "../api/client";
+import { fetchDevice, fetchLatestApk, removeDevice, sendCommand } from "../api/client";
 import { useAdminWebSocket } from "../hooks/useAdminWebSocket";
 import { DeviceLocationPanel } from "../components/DeviceLocationPanel";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -9,6 +9,7 @@ import { RemoteViewer } from "../components/RemoteViewer";
 import type { Device, DeviceCommand } from "../types";
 import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
 import { formatPhoneNumber } from "../utils/formatPhoneNumber";
+import { isNewerVersion } from "../utils/compareSemver";
 import type { StreamDimensions } from "../utils/streamDimensions";
 
 export function DeviceDetail() {
@@ -36,6 +37,7 @@ export function DeviceDetail() {
   const [streamLayoutHint, setStreamLayoutHint] = useState<StreamDimensions | null>(
     null
   );
+  const [latestApkVersion, setLatestApkVersion] = useState<string | null>(null);
   const initialLoadDone = useRef(false);
 
   const { connected, deviceOnline, deviceReconnecting, lastEvent, signalingStatus, sendWebRtc, sendControl, setWebRtcHandler } =
@@ -126,6 +128,33 @@ export function DeviceDetail() {
     const interval = setInterval(() => void loadDevice(), 10000);
     return () => clearInterval(interval);
   }, [loadDevice]);
+
+  useEffect(() => {
+    if (!auth.user) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadLatestApk = async () => {
+      try {
+        const latest = await fetchLatestApk(auth.user!);
+        if (!cancelled) {
+          setLatestApkVersion(latest.version);
+        }
+      } catch {
+        if (!cancelled) {
+          setLatestApkVersion(null);
+        }
+      }
+    };
+
+    void loadLatestApk();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.user]);
 
   const runCommand = async (command: DeviceCommand) => {
     if (!auth.user || !uid) return;
@@ -222,6 +251,7 @@ export function DeviceDetail() {
   if (error || !device) return <p className="error">{error ?? "Device not found"}</p>;
 
   const hasLocation = device.last_lat != null && device.last_lon != null;
+  const newerApkAvailable = isNewerVersion(latestApkVersion, device.app_version);
   const deviceStreamReady =
     remoteSessionId > 0 &&
     webrtcReadySessionId === remoteSessionId &&
@@ -364,9 +394,14 @@ export function DeviceDetail() {
               <dt>Model</dt>
               <dd>{device.model_display}</dd>
             </div>
-            <div>
+            <div className="info-list-app-version">
               <dt>App version</dt>
               <dd>{device.app_version ?? "—"}</dd>
+              {newerApkAvailable ? (
+                <p className="app-version-update-banner" role="status">
+                  Newer application version available
+                </p>
+              ) : null}
             </div>
             <div>
               <dt>Battery</dt>
