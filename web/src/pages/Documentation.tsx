@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { GITHUB_REPO_URL } from "../config/portal";
 import { documentationGuides } from "../guides";
 
 export function Documentation() {
@@ -35,6 +36,12 @@ export function Documentation() {
           ))}
         </ul>
       </section>
+
+      <p className="documentation-repo-link">
+        <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">
+          GitHub repository
+        </a>
+      </p>
     </div>
   );
 }

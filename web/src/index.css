@@ -314,6 +314,21 @@ button:hover {
   max-width: 42rem;
 }
 
+.documentation-repo-link {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.documentation-repo-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.documentation-repo-link a:hover {
+  text-decoration: underline;
+}
+
 .documentation-guide-back {
   margin: 0;
   font-size: 0.875rem;
@@ -497,6 +512,28 @@ button:hover {
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+}
+
+.app-footer {
+  padding: 1.25rem 1.5rem 1.75rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+}
+
+.app-footer p {
+  margin: 0;
+}
+
+.app-footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.app-footer a:hover {
+  color: var(--accent);
 }
 
 .page-header h1 {

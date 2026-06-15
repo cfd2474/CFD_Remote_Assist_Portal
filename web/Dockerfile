@@ -4,6 +4,7 @@ WORKDIR /app/web
 COPY web/package.json web/package-lock.json* ./
 RUN npm ci 2>/dev/null || npm install
 COPY web/ ./
+COPY VERSION /app/VERSION
 COPY docs/eud-remote-assist-portal-admin-guide.md docs/eud-remote-assist-app-deployment-guide.md docs/RELEASE_NOTES.md /app/docs/
 ARG VITE_OIDC_AUTHORITY
 ARG VITE_OIDC_CLIENT_ID

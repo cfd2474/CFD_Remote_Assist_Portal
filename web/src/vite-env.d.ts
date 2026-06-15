@@ -15,3 +15,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare const __PORTAL_VERSION__: string;

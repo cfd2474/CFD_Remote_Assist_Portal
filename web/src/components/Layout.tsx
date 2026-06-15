@@ -1,5 +1,6 @@
 import { useAuth } from "react-oidc-context";
 import { Link, Outlet } from "react-router-dom";
+import { AppFooter } from "./AppFooter";
 
 export function Layout() {
   const auth = useAuth();
@@ -42,6 +43,7 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <AppFooter />
     </div>
   );
 }

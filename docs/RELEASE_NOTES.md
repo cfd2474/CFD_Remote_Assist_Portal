@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.7 -->
+## Version 2.2.7
+
+**Portal**
+
+- Added a centered site footer with TAK-Solutions attribution, open-source license link, and installed portal version.
+- Documentation index links to the GitHub repository at the bottom of the page.
+
+<!-- RELEASE_END version=2.2.7 -->
+
 <!-- RELEASE_START version=2.2.6 -->
 ## Version 2.2.6
 
