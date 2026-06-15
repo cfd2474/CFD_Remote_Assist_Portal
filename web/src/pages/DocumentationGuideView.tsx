@@ -13,9 +13,19 @@ export function DocumentationGuideView() {
   return (
     <div className="page documentation-guide-page">
       <div className="page-header documentation-guide-header">
-        <p className="documentation-guide-back">
-          <Link to="/documentation">← Documentation</Link>
-        </p>
+        <div className="documentation-guide-toolbar">
+          <p className="documentation-guide-back">
+            <Link to="/documentation">← Documentation</Link>
+          </p>
+          <a
+            href={`/documentation/${guide.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="documentation-open-tab-button"
+          >
+            Open in New Tab
+          </a>
+        </div>
       </div>
 
       <section className="panel guide-panel">
