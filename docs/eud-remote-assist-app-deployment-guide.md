@@ -9,7 +9,7 @@ The Remote Assist Android app is the client that runs on each managed device. It
 ## 1. Requirements
 
 - Android device (tested on standard Android handsets).
-- **MDM/EMM (preferred):** an EMM that can install the APK and push **managed configuration** (e.g. Watchtower / Sherpa, or any EMM supporting app restrictions).
+- **MDM/EMM (preferred):** an EMM that can install the APK and push **managed configuration** (any EMM supporting app restrictions).
 - **Manual install (alternative):** the `.apk` file and access to the on-device settings screen to enter server URL and agency.
 - Network access to the device API on **port 8448** (`https://<FQDN>:8448`).
 
