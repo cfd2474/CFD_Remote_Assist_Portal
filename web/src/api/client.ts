@@ -123,12 +123,16 @@ export async function fetchLocationHistory(
   user: User,
   uid: string,
   fromAt: Date,
-  toAt: Date
+  toAt: Date,
+  options?: { full?: boolean }
 ): Promise<LocationHistoryPoint[]> {
   const params = new URLSearchParams({
     from_at: fromAt.toISOString(),
     to_at: toAt.toISOString(),
   });
+  if (options?.full) {
+    params.set("full", "1");
+  }
   const data = await apiFetch<{ points: LocationHistoryPoint[] }>(
     `/api/admin/devices/${uid}/location-history?${params}`,
     user

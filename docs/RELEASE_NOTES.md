@@ -6,6 +6,20 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.6 -->
+## Version 2.2.6
+
+**Portal**
+
+- Added **Export all history** on the device location history page.
+- Downloads a CSV of every stored location record (unsampled), filename includes device name and UID.
+
+**API**
+
+- Location history endpoint supports `?full=1` for complete export data (map/table still use sampled points).
+
+<!-- RELEASE_END version=2.2.6 -->
+
 <!-- RELEASE_START version=2.2.5 -->
 ## Version 2.2.5
 

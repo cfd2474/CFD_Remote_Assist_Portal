@@ -216,6 +216,31 @@ export async function getLocationHistory(
   fromAt: Date,
   toAt: Date
 ): Promise<SampledLocationPoint[]> {
+  const points = await queryLocationHistoryPoints(uid, fromAt, toAt);
+  return downsampleLocationHistory(points);
+}
+
+export async function getLocationHistoryFull(
+  uid: string,
+  fromAt: Date,
+  toAt: Date
+): Promise<SampledLocationPoint[]> {
+  const points = await queryLocationHistoryPoints(uid, fromAt, toAt);
+
+  return points.map((point, index) => ({
+    number: index + 1,
+    lat: point.lat,
+    lon: point.lon,
+    accuracy_m: point.accuracy_m,
+    recorded_at: point.recorded_at.toISOString(),
+  }));
+}
+
+async function queryLocationHistoryPoints(
+  uid: string,
+  fromAt: Date,
+  toAt: Date
+): Promise<LocationHistoryPoint[]> {
   const result = await pool.query<{
     lat: number;
     lon: number;
@@ -233,14 +258,12 @@ export async function getLocationHistory(
     [uid, toAt, fromAt]
   );
 
-  const points: LocationHistoryPoint[] = result.rows.map((row) => ({
+  return result.rows.map((row) => ({
     lat: row.lat,
     lon: row.lon,
     accuracy_m: row.accuracy_m,
     recorded_at: row.recorded_at,
   }));
-
-  return downsampleLocationHistory(points);
 }
 
 export const LOCATION_HISTORY_RETENTION_DAYS = 30;

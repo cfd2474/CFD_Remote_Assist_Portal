@@ -5,6 +5,7 @@ import {
   getDevice,
   getTelemetryHistory,
   getLocationHistory,
+  getLocationHistoryFull,
   getDeviceEvents,
   deleteDevice,
   setRemoteAdminActive,
@@ -124,7 +125,10 @@ adminApiRouter.get("/devices/:uid/location-history", async (req, res) => {
       return;
     }
 
-    const points = await getLocationHistory(req.params.uid, fromAt, toAt);
+    const fullHistory = req.query.full === "1" || req.query.full === "true";
+    const points = fullHistory
+      ? await getLocationHistoryFull(req.params.uid, fromAt, toAt)
+      : await getLocationHistory(req.params.uid, fromAt, toAt);
     res.json({ points });
   } catch (err) {
     console.error("Location history error:", err);

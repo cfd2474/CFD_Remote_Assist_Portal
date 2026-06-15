@@ -5,6 +5,11 @@ import { fetchDevice, fetchLocationHistory } from "../api/client";
 import { LocationHistoryMap } from "../components/LocationHistoryMap";
 import type { Device, LocationHistoryPoint } from "../types";
 import {
+  buildLocationHistoryCsv,
+  buildLocationHistoryFilename,
+  downloadCsv,
+} from "../utils/exportLocationHistoryCsv";
+import {
   buildLocationHistoryBounds,
   defaultLocationHistoryToDate,
   formatLocalDateInput,
@@ -19,6 +24,8 @@ export function DeviceLocationHistory() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
 
   const [fromMode, setFromMode] = useState<"now" | "date">("now");
@@ -98,6 +105,36 @@ export function DeviceLocationHistory() {
 
   const applyFilter = () => {
     setAppliedFilter({ fromMode, fromDate, toDate });
+  };
+
+  const exportAllHistory = async () => {
+    if (!auth.user || !uid || !device) {
+      return;
+    }
+
+    setExporting(true);
+    setExportError(null);
+
+    try {
+      const allPoints = await fetchLocationHistory(
+        auth.user,
+        uid,
+        new Date(),
+        new Date(0),
+        { full: true }
+      );
+      const csv = buildLocationHistoryCsv(allPoints);
+      downloadCsv(
+        csv,
+        buildLocationHistoryFilename(device.device_name, device.uid)
+      );
+    } catch (err) {
+      setExportError(
+        err instanceof Error ? err.message : "Failed to export location history"
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -180,7 +217,18 @@ export function DeviceLocationHistory() {
       </section>
 
       <section className="panel">
-        <h2>Records</h2>
+        <div className="location-history-records-header">
+          <h2>Records</h2>
+          <button
+            type="button"
+            className="btn-primary location-history-export"
+            disabled={exporting}
+            onClick={() => void exportAllHistory()}
+          >
+            {exporting ? "Exporting…" : "Export all history"}
+          </button>
+        </div>
+        {exportError ? <p className="error">{exportError}</p> : null}
         {historyLoading ? (
           <p className="loading">Loading records…</p>
         ) : points.length === 0 ? (

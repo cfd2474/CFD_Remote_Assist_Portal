@@ -1163,6 +1163,22 @@ button:hover {
   overflow-x: auto;
 }
 
+.location-history-records-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.location-history-records-header h2 {
+  margin: 0;
+}
+
+.location-history-export {
+  flex-shrink: 0;
+}
+
 .location-history-table {
   width: 100%;
   border-collapse: collapse;
