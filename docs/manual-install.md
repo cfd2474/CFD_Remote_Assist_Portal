@@ -77,13 +77,13 @@ Verify:
 
 ```bash
 cat VERSION
-# 2.2.0
+# 2.2.1
 
 curl http://127.0.0.1:8091/health
-# {"status":"ok","service":"eud-remote-assist-portal","version":"2.2.0"}
+# {"status":"ok","service":"eud-remote-assist-portal","version":"2.2.1"}
 
 curl http://127.0.0.1:8091/version
-# {"version":"2.2.0","service":"eud-remote-assist-portal"}
+# {"version":"2.2.1","service":"eud-remote-assist-portal"}
 ```
 
 See [versioning.md](versioning.md) for install automation and version checks.
