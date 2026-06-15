@@ -82,3 +82,9 @@ export interface LatestApkRelease {
   downloadUrl: string;
   releaseTag: string;
 }
+
+export interface PortalGithubConfig {
+  apkRepo: string;
+  tokenConfigured: boolean;
+  tokenSource: "environment" | "portal" | null;
+}

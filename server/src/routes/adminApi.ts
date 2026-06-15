@@ -15,6 +15,13 @@ import { queueCommand } from "../services/commands.js";
 import { setRemoteSessionActive, getSignalingStatus, getSignalingReplay } from "../services/signalingSession.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { getLatestApkRelease } from "../services/githubReleases.js";
+import {
+  clearPortalGithubToken,
+  getGithubTokenStatus,
+  setPortalGithubToken,
+  validateGithubToken,
+  getGithubApkRepo,
+} from "../services/portalSettings.js";
 import { resolveModelDisplays, getModelDisplay } from "../services/phoneDb.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
 
@@ -340,6 +347,45 @@ adminApiRouter.get("/app/latest-apk", async (_req, res) => {
     res.json({ apk: latest });
   } catch (err) {
     console.error("Latest APK lookup error:", err);
-    res.status(502).json({ error: "Failed to fetch latest APK from GitHub" });
+    const message =
+      err instanceof Error ? err.message : "Failed to fetch latest APK from GitHub";
+    res.status(502).json({ error: message });
+  }
+});
+
+adminApiRouter.get("/portal-config/github", (_req, res) => {
+  res.json(getGithubTokenStatus());
+});
+
+adminApiRouter.put("/portal-config/github", async (req, res) => {
+  const token = req.body?.token;
+  if (typeof token !== "string") {
+    res.status(400).json({ error: "token is required" });
+    return;
+  }
+
+  try {
+    const repo = getGithubApkRepo();
+    const trimmed = token.trim();
+    await validateGithubToken(trimmed, repo);
+    await setPortalGithubToken(trimmed);
+    res.json({ ok: true, ...getGithubTokenStatus() });
+  } catch (err) {
+    console.error("Apply GitHub token error:", err);
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Failed to apply GitHub token",
+    });
+  }
+});
+
+adminApiRouter.delete("/portal-config/github", async (_req, res) => {
+  try {
+    await clearPortalGithubToken();
+    res.json({ ok: true, ...getGithubTokenStatus() });
+  } catch (err) {
+    console.error("Clear GitHub token error:", err);
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Failed to clear GitHub token",
+    });
   }
 });

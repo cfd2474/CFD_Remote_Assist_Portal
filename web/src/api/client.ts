@@ -1,5 +1,5 @@
 import type { User } from "oidc-client-ts";
-import type { ControlPacket, Device, DeviceCommand, LatestApkRelease, LocationHistoryPoint, SignalingStatus } from "../types";
+import type { ControlPacket, Device, DeviceCommand, LatestApkRelease, LocationHistoryPoint, PortalGithubConfig, SignalingStatus } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -146,4 +146,34 @@ export async function fetchLatestApk(user: User): Promise<LatestApkRelease> {
     user
   );
   return data.apk;
+}
+
+export async function fetchPortalGithubConfig(
+  user: User
+): Promise<PortalGithubConfig> {
+  return apiFetch<PortalGithubConfig>("/api/admin/portal-config/github", user);
+}
+
+export async function applyPortalGithubToken(
+  user: User,
+  token: string
+): Promise<PortalGithubConfig & { ok: true }> {
+  return apiFetch<PortalGithubConfig & { ok: true }>(
+    "/api/admin/portal-config/github",
+    user,
+    {
+      method: "PUT",
+      body: JSON.stringify({ token }),
+    }
+  );
+}
+
+export async function clearPortalGithubToken(
+  user: User
+): Promise<PortalGithubConfig & { ok: true }> {
+  return apiFetch<PortalGithubConfig & { ok: true }>(
+    "/api/admin/portal-config/github",
+    user,
+    { method: "DELETE" }
+  );
 }

@@ -57,9 +57,17 @@ NGINX_BIND_ADDR=127.0.0.1
 HTTP_PORT=8767
 NGINX_ENABLE_TLS=false
 PHONEDB_TLS_INSECURE=true
+GITHUB_APK_REPO=cfd2474/EUD_Remote_Assist_Portal
 ```
 
+| Variable | infra-TAK | Notes |
+|----------|-----------|-------|
+| `GITHUB_APK_REPO` | Operator / default | Repo that publishes `.apk` releases |
+| `GITHUB_TOKEN` | Optional | Or configure later via **Portal Configuration** in the admin UI |
+
 **New required env vars:** always add to `.env.example` with a default so infra-TAK can merge on deploy.
+
+See [github-apk-config.md](github-apk-config.md) for GitHub APK lookup details.
 
 ---
 

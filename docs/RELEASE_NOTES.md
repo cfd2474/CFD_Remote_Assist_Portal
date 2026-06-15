@@ -6,6 +6,21 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.9 -->
+## Version 2.2.9
+
+**Portal**
+
+- **Portal Configuration** — optional GitHub classic `public_repo` token with Apply/Remove (no restart required).
+- Default APK lookup remains standard unauthenticated GitHub access; token enables unthrottled repo access.
+- Token persisted in `data/portal-settings.json` via Docker volume mount.
+
+**Documentation**
+
+- Added [github-apk-config.md](github-apk-config.md) for GitHub APK lookup and token setup.
+
+<!-- RELEASE_END version=2.2.9 -->
+
 <!-- RELEASE_START version=2.2.8 -->
 ## Version 2.2.8
 

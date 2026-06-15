@@ -32,6 +32,11 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL}
       PHONEDB_TLS_INSECURE: ${PHONEDB_TLS_INSECURE:-true}
+      GITHUB_APK_REPO: ${GITHUB_APK_REPO:-cfd2474/EUD_Remote_Assist_Portal}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      PORTAL_SETTINGS_DIR: /app/data
+    volumes:
+      - ./data:/app/data
     expose:
       - "3000"
 

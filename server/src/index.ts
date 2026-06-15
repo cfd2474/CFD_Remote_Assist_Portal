@@ -10,6 +10,10 @@ import { deviceApiRouter } from "./routes/deviceApi.js";
 import { adminApiRouter } from "./routes/adminApi.js";
 import { attachWebSocketHandlers } from "./ws/handlers.js";
 import { resetLiveSessionFlags, purgeOldLocationHistory } from "./services/devices.js";
+import {
+  getEffectiveGithubToken,
+  loadPortalSettings,
+} from "./services/portalSettings.js";
 
 const app = express();
 
@@ -103,6 +107,7 @@ async function runLocationHistoryPurge(): Promise<void> {
 }
 
 void resetLiveSessionFlags().then(async () => {
+  await loadPortalSettings();
   await runLocationHistoryPurge();
   setInterval(runLocationHistoryPurge, LOCATION_HISTORY_PURGE_MS);
 
@@ -110,5 +115,10 @@ void resetLiveSessionFlags().then(async () => {
     console.log(
       `EUD Remote Assist Portal v${VERSION} listening on port ${config.port}`
     );
+    if (!getEffectiveGithubToken()) {
+      console.warn(
+        "No GitHub token configured — APK lookups use standard unauthenticated GitHub API access. Add a token under Portal Configuration for unthrottled repo access."
+      );
+    }
   });
 });

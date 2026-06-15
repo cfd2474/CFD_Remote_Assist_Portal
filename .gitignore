@@ -4,6 +4,7 @@ build/
 *.tsbuildinfo
 .env
 .env.local
+data/portal-settings.json
 *.log
 .DS_Store
 nginx/certs/*.pem

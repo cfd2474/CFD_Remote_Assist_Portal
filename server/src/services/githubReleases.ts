@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { getEffectiveGithubToken } from "./portalSettings.js";
 
 export interface LatestApkRelease {
   version: string;
@@ -46,14 +47,20 @@ export async function getLatestApkRelease(): Promise<LatestApkRelease | null> {
     "User-Agent": "eud-remote-assist-portal",
   };
 
-  if (config.github.token) {
-    headers.Authorization = `Bearer ${config.github.token}`;
+  const token = getEffectiveGithubToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const url = `https://api.github.com/repos/${config.github.repo}/releases?per_page=100`;
   const res = await fetch(url, { headers, cache: "no-store" });
 
   if (!res.ok) {
+    if ((res.status === 403 || res.status === 401) && !getEffectiveGithubToken()) {
+      throw new Error(
+        `GitHub API returned ${res.status}. Add a GitHub token under Portal Configuration or set GITHUB_TOKEN in .env.`
+      );
+    }
     throw new Error(`GitHub releases request failed: ${res.status}`);
   }
 

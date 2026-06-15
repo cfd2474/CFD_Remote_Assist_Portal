@@ -329,6 +329,65 @@ button:hover {
   text-decoration: underline;
 }
 
+.portal-config-panel h2 {
+  margin-top: 0;
+}
+
+.portal-config-intro {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.portal-config-status {
+  margin-bottom: 1.25rem;
+}
+
+.portal-config-instructions {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.portal-config-instructions h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.portal-config-instructions ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-muted);
+}
+
+.portal-config-instructions li + li {
+  margin-top: 0.45rem;
+}
+
+.portal-config-note,
+.portal-config-env-note {
+  margin: 0.85rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.portal-config-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.portal-config-token-field input {
+  width: min(100%, 28rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.portal-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .documentation-guide-back {
   margin: 0;
   font-size: 0.875rem;
