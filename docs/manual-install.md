@@ -24,7 +24,7 @@ docker compose version
 ```bash
 sudo mkdir -p /opt/cfd-remote-assist
 sudo chown $USER:$USER /opt/cfd-remote-assist
-git clone https://github.com/cfd2474/CFD_Remote_Assist_Portal.git /opt/cfd-remote-assist
+git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/cfd-remote-assist
 cd /opt/cfd-remote-assist
 ```
 

@@ -81,7 +81,7 @@ Portal: `http://localhost` (or your configured host)
 Full steps: [docs/manual-install.md](docs/manual-install.md)
 
 ```bash
-git clone https://github.com/cfd2474/CFD_Remote_Assist_Portal.git /opt/cfd-remote-assist
+git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/cfd-remote-assist
 cd /opt/cfd-remote-assist
 cp .env.example .env   # edit with your values
 docker compose up -d --build
