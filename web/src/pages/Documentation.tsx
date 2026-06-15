@@ -6,11 +6,22 @@ export function Documentation() {
     <div className="page documentation-page">
       <div className="page-header">
         <h1>Documentation</h1>
-        <p>User guides for the EUD Remote Assist portal and Android app.</p>
+        <p>User guides and release notes for the EUD Remote Assist portal.</p>
       </div>
 
       <section className="panel documentation-panel">
         <ul className="documentation-guide-list">
+          <li className="documentation-guide-item">
+            <Link
+              to="/documentation/release-notes"
+              className="documentation-guide-link"
+            >
+              Release Notes
+            </Link>
+            <p className="documentation-guide-description">
+              Version history and changes for each portal release.
+            </p>
+          </li>
           {documentationGuides.map((guide) => (
             <li key={guide.slug} className="documentation-guide-item">
               <Link
