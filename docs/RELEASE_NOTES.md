@@ -6,6 +6,15 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.10 -->
+## Version 2.2.10
+
+**Server**
+
+- WebRTC offers and ICE relayed to devices now include `connection_secret`, matching command auth and fixing Android "Secret mismatch" rejections during remote assist.
+
+<!-- RELEASE_END version=2.2.10 -->
+
 <!-- RELEASE_START version=2.2.9 -->
 ## Version 2.2.9
 

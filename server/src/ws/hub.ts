@@ -8,6 +8,7 @@ import { formatCommandForDevice } from "../services/commands.js";
 import type { CommandDeliveryOptions } from "../services/commands.js";
 import {
   normalizeSignaling,
+  toWebRtcPayload,
   SIGNALING_HINT_PAYLOAD,
 } from "../services/signalingNormalize.js";
 import type { NormalizedSignaling } from "../services/signalingNormalize.js";
@@ -29,22 +30,16 @@ interface ConnectedClient {
   adminSessionId?: string;
 }
 
-function toWebRtcPayload(message: NormalizedSignaling): Record<string, unknown> {
-  const payload: Record<string, unknown> = { type: "webrtc" };
-  if (message.sdp) payload.sdp = message.sdp;
-  if (message.ice) payload.ice = message.ice;
-  return payload;
-}
-
 export class ConnectionHub {
   private devices = new Map<string, WebSocket>();
+  private deviceSecrets = new Map<string, string>();
   private admins = new Map<string, Set<WebSocket>>();
   private clients = new WeakMap<WebSocket, ConnectedClient>();
   private offlineTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private static readonly OFFLINE_GRACE_MS = 8_000;
 
-  registerDevice(ws: WebSocket, uid: string): void {
+  registerDevice(ws: WebSocket, uid: string, connectionSecret: string): void {
     const pendingOffline = this.offlineTimers.get(uid);
     if (pendingOffline) {
       clearTimeout(pendingOffline);
@@ -60,6 +55,7 @@ export class ConnectionHub {
     }
 
     this.devices.set(uid, ws);
+    this.deviceSecrets.set(uid, connectionSecret);
     this.clients.set(ws, { ws, role: "device", uid });
     void setDeviceOnline(uid, true);
 
@@ -96,6 +92,7 @@ export class ConnectionHub {
       const current = this.devices.get(uid);
       if (current === ws) {
         this.devices.delete(uid);
+        this.deviceSecrets.delete(uid);
 
         const existing = this.offlineTimers.get(uid);
         if (existing) clearTimeout(existing);
@@ -217,7 +214,9 @@ export class ConnectionHub {
       });
 
       if (wsDelivered) {
-        deviceWs!.send(JSON.stringify(payload));
+        const deviceSecret = this.deviceSecrets.get(uid);
+        const devicePayload = toWebRtcPayload(normalized, deviceSecret);
+        deviceWs!.send(JSON.stringify(devicePayload));
         console.log(`WebRTC relay admin→device uid=${uid} kind=${kind}`);
       } else {
         console.log(
@@ -274,6 +273,10 @@ export class ConnectionHub {
 
   getClientUid(ws: WebSocket): string | undefined {
     return this.clients.get(ws)?.uid;
+  }
+
+  getDeviceSecret(uid: string): string | undefined {
+    return this.deviceSecrets.get(uid);
   }
 
   disconnectDevice(uid: string): void {

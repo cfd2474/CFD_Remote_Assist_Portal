@@ -121,6 +121,19 @@ export function describeSignaling(message: Record<string, unknown>): string {
   return "webrtc";
 }
 
+export function toWebRtcPayload(
+  message: NormalizedSignaling,
+  connectionSecret?: string
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = { type: "webrtc" };
+  if (connectionSecret) {
+    payload.connection_secret = connectionSecret;
+  }
+  if (message.sdp) payload.sdp = message.sdp;
+  if (message.ice) payload.ice = message.ice;
+  return payload;
+}
+
 export const SIGNALING_HINT_PAYLOAD = {
   type: "signaling_hint",
   role: "device_is_answerer",

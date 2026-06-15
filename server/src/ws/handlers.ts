@@ -99,7 +99,7 @@ export function attachWebSocketHandlers(
           console.log(`Device WebSocket connected: uid=${auth.uid} ip=${req.socket.remoteAddress}`);
           authenticated = true;
           clearTimeout(authTimeout);
-          hub.registerDevice(ws, auth.uid);
+          hub.registerDevice(ws, auth.uid, auth.connection_secret);
           ws.send(JSON.stringify({ type: "auth_ok", uid: auth.uid }));
 
           const pending = await drainCommands(auth.uid);

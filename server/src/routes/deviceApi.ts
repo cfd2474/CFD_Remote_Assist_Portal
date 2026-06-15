@@ -11,6 +11,7 @@ import { drainCommands } from "../services/commands.js";
 import {
   normalizeSignaling,
   describeSignaling,
+  toWebRtcPayload,
   SIGNALING_HINT_PAYLOAD,
 } from "../services/signalingNormalize.js";
 import {
@@ -194,8 +195,11 @@ deviceApiRouter.get("/commands", requireDeviceSecret, async (req, res) => {
 deviceApiRouter.get("/signaling", requireDeviceSecret, async (req, res) => {
   try {
     const uid = req.device!.uid;
+    const connectionSecret = req.device!.connection_secret;
     await touchLastSeen(uid);
-    const messages = drainPendingToDevice(uid);
+    const messages = drainPendingToDevice(uid).map((message) =>
+      toWebRtcPayload(message, connectionSecret)
+    );
     res.json({
       messages,
       format_hint: SIGNALING_HINT_PAYLOAD.format,
