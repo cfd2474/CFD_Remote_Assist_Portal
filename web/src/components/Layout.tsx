@@ -30,6 +30,9 @@ export function Layout() {
           <Link to="/" className="app-subheader-link">
             Managed Devices
           </Link>
+          <Link to="/portal-configuration" className="app-subheader-link">
+            Portal Configuration
+          </Link>
         </nav>
         <nav className="app-subheader-nav app-subheader-nav-end" aria-label="Resources">
           <Link to="/documentation" className="app-subheader-link">

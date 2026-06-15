@@ -12,7 +12,7 @@ export function AppFooter() {
         >
           Open-source license
         </a>
-        . Version {PORTAL_VERSION}.
+        . Admin Portal version {PORTAL_VERSION}.
       </p>
     </footer>
   );

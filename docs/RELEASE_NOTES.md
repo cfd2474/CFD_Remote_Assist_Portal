@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.8 -->
+## Version 2.2.8
+
+**Portal**
+
+- Footer now shows **Admin Portal version** with the installed release number.
+- Added **Portal Configuration** nav link and placeholder page for upcoming advanced settings.
+
+<!-- RELEASE_END version=2.2.8 -->
+
 <!-- RELEASE_START version=2.2.7 -->
 ## Version 2.2.7
 
