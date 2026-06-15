@@ -16,8 +16,6 @@ export function Documentation() {
               <Link
                 to={`/documentation/${guide.slug}`}
                 className="documentation-guide-link"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 {guide.title}
               </Link>
