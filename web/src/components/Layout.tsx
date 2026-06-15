@@ -25,7 +25,12 @@ export function Layout() {
         </div>
       </header>
       <div className="app-subheader">
-        <nav className="app-subheader-nav" aria-label="Resources">
+        <nav className="app-subheader-nav app-subheader-nav-start" aria-label="Primary">
+          <Link to="/" className="app-subheader-link">
+            Managed Devices
+          </Link>
+        </nav>
+        <nav className="app-subheader-nav app-subheader-nav-end" aria-label="Resources">
           <Link to="/documentation" className="app-subheader-link">
             Documentation
           </Link>
