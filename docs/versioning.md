@@ -1,6 +1,6 @@
 # Versioning
 
-The EUD Remote Assist Portal uses a single release version in the repo root **`VERSION`** file (currently **2.1.1**). Install automation and operators can read it from git or from the running API.
+The EUD Remote Assist Portal uses a single release version in the repo root **`VERSION`** file (currently **2.2.0**). Install automation and operators can read it from git or from the running API.
 
 infra-TAK and other orchestrators: see [infratak-integration.md](infratak-integration.md).
 
@@ -8,25 +8,25 @@ infra-TAK and other orchestrators: see [infratak-integration.md](infratak-integr
 
 | Location | Format |
 |----------|--------|
-| `VERSION` (repo root) | `2.1.1` (semver, one line) |
-| Git tag (optional) | `v2.1.1` |
+| `VERSION` (repo root) | `2.2.0` (semver, one line) |
+| Git tag (optional) | `v2.2.0` |
 | Running server | `GET /version` or `GET /health` |
 
 Bump **`VERSION`** (and matching `server/package.json` / `web/package.json` if desired) for each portal release. Tag the commit when publishing:
 
 ```bash
-git tag -a v2.1.1 -m "EUD Remote Assist Portal 2.1.1"
-git push origin v2.1.1
+git tag -a v2.2.0 -m "EUD Remote Assist Portal 2.2.0"
+git push origin v2.2.0
 ```
 
 ## Check version from a git checkout
 
 ```bash
 cat VERSION
-# 2.1.1
+# 2.2.0
 
 ./scripts/version.sh
-# 2.1.1
+# 2.2.0
 ```
 
 After `git pull`, compare the checkout to what is deployed:
@@ -45,7 +45,7 @@ Both are proxied on the **device API port (8448)** in production. No authenticat
 
 ```json
 {
-  "version": "2.1.1",
+  "version": "2.2.0",
   "service": "eud-remote-assist-portal"
 }
 ```
@@ -56,7 +56,7 @@ Both are proxied on the **device API port (8448)** in production. No authenticat
 {
   "status": "ok",
   "service": "eud-remote-assist-portal",
-  "version": "2.1.1"
+  "version": "2.2.0"
 }
 ```
 
