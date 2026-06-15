@@ -1,5 +1,7 @@
 # MDM Managed Configuration
 
+Operator guide: [eud-remote-assist-app-deployment-guide.md](eud-remote-assist-app-deployment-guide.md)
+
 Push this app restrictions bundle to the CFD Assist Android app via your EMM/MDM.
 
 ```xml

@@ -100,6 +100,8 @@ cd /opt/cfd-remote-assist && git pull && docker compose up -d --build
 
 See:
 
+- [docs/eud-remote-assist-portal-admin-guide.md](docs/eud-remote-assist-portal-admin-guide.md) — **administrator user guide**
+- [docs/eud-remote-assist-app-deployment-guide.md](docs/eud-remote-assist-app-deployment-guide.md) — **Android app deployment & MDM guide**
 - [docs/infratak-integration.md](docs/infratak-integration.md) — infra-TAK loopback/Caddy profile (no compose patching)
 - [docs/versioning.md](docs/versioning.md) — release version checks for install automation
 - [docs/manual-install.md](docs/manual-install.md) — server setup on Ubuntu 22.04
