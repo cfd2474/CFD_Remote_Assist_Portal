@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { fetchDevices } from "../api/client";
+import { fetchDevices, removeDevice } from "../api/client";
+import { ConfirmModal } from "../components/ConfirmModal";
 import type { Device } from "../types";
 
 type SortKey = "device_name" | "agency";
@@ -30,6 +31,11 @@ export function DeviceList() {
   const [agencyFilter, setAgencyFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(() => new Set());
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!auth.user) return;
@@ -71,6 +77,107 @@ export function DeviceList() {
     return list;
   }, [devices, nameFilter, agencyFilter, sortKey, sortDir]);
 
+  const visibleUids = useMemo(
+    () => visibleDevices.map((device) => device.uid),
+    [visibleDevices]
+  );
+
+  const selectedVisibleCount = useMemo(
+    () => visibleUids.filter((uid) => selectedUids.has(uid)).length,
+    [visibleUids, selectedUids]
+  );
+
+  const allVisibleSelected =
+    visibleUids.length > 0 && selectedVisibleCount === visibleUids.length;
+  const someVisibleSelected =
+    selectedVisibleCount > 0 && selectedVisibleCount < visibleUids.length;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someVisibleSelected;
+    }
+  }, [someVisibleSelected]);
+
+  const selectedDevices = useMemo(
+    () => devices.filter((device) => selectedUids.has(device.uid)),
+    [devices, selectedUids]
+  );
+
+  const toggleDeviceSelection = (uid: string) => {
+    setSelectedUids((current) => {
+      const next = new Set(current);
+      if (next.has(uid)) {
+        next.delete(uid);
+      } else {
+        next.add(uid);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedUids((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) {
+        for (const uid of visibleUids) {
+          next.delete(uid);
+        }
+      } else {
+        for (const uid of visibleUids) {
+          next.add(uid);
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleBulkRemove = async () => {
+    if (!auth.user || selectedDevices.length === 0) {
+      return;
+    }
+
+    setRemoveModalOpen(false);
+    setRemoving(true);
+    setActionMessage(null);
+
+    const uidsToRemove = selectedDevices.map((device) => device.uid);
+    const failed: string[] = [];
+
+    try {
+      for (const uid of uidsToRemove) {
+        try {
+          await removeDevice(auth.user, uid);
+        } catch {
+          failed.push(uid);
+        }
+      }
+
+      const remaining = await fetchDevices(auth.user);
+      setDevices(remaining);
+      setSelectedUids((current) => {
+        const next = new Set(current);
+        for (const uid of uidsToRemove) {
+          if (!failed.includes(uid)) {
+            next.delete(uid);
+          }
+        }
+        return next;
+      });
+
+      if (failed.length > 0) {
+        setActionMessage(
+          `Removed ${uidsToRemove.length - failed.length} of ${uidsToRemove.length} device(s). ${failed.length} failed.`
+        );
+      }
+    } catch (err) {
+      setActionMessage(
+        err instanceof Error ? err.message : "Failed to remove devices"
+      );
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
@@ -101,11 +208,15 @@ export function DeviceList() {
           No devices registered yet. Deploy the Android client and register via MDM.
         </p>
       ) : (
-        <div className="device-list-wrap">
-          <table className="device-list">
-            <thead>
-              <tr className="device-list-filter-row">
-                <th>
+        <>
+          {actionMessage ? <p className="action-message">{actionMessage}</p> : null}
+
+          <div className="device-list-wrap">
+            <table className="device-list">
+              <thead>
+                <tr className="device-list-filter-row">
+                  <th aria-hidden="true" />
+                  <th>
                   <input
                     type="search"
                     className="device-list-filter"
@@ -131,6 +242,17 @@ export function DeviceList() {
                 <th aria-hidden="true" />
               </tr>
               <tr>
+                <th className="device-list-select-col">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    className="device-list-checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                    disabled={visibleDevices.length === 0}
+                    aria-label="Select all visible devices"
+                  />
+                </th>
                 <th>
                   <button
                     type="button"
@@ -164,13 +286,22 @@ export function DeviceList() {
             <tbody>
               {visibleDevices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="empty-state">
+                  <td colSpan={7} className="empty-state">
                     No devices match your filters.
                   </td>
                 </tr>
               ) : (
                 visibleDevices.map((device) => (
                   <tr key={device.uid}>
+                    <td className="device-list-select-col">
+                      <input
+                        type="checkbox"
+                        className="device-list-checkbox"
+                        checked={selectedUids.has(device.uid)}
+                        onChange={() => toggleDeviceSelection(device.uid)}
+                        aria-label={`Select ${device.device_name}`}
+                      />
+                    </td>
                     <td>
                       <Link to={`/devices/${device.uid}`} className="device-list-name">
                         {device.device_name}
@@ -199,8 +330,58 @@ export function DeviceList() {
                 ))
               )}
             </tbody>
-          </table>
-        </div>
+            </table>
+          </div>
+
+          <section className="panel panel-danger device-list-bulk-remove">
+            <h2>Remove devices</h2>
+            <p>
+              Permanently delete selected devices and all associated telemetry
+              and event history from the portal.
+            </p>
+            <button
+              type="button"
+              className="btn-remove"
+              disabled={selectedDevices.length === 0 || removing}
+              onClick={() => setRemoveModalOpen(true)}
+            >
+              {removing ? "Removing…" : "Remove Device & Clear Data"}
+            </button>
+          </section>
+
+          <ConfirmModal
+            open={removeModalOpen}
+            title={
+              selectedDevices.length === 1 ? "Remove device?" : "Remove devices?"
+            }
+            confirmLabel="Remove Device & Clear Data"
+            confirmClassName="btn-remove"
+            onConfirm={() => void handleBulkRemove()}
+            onCancel={() => setRemoveModalOpen(false)}
+          >
+            {selectedDevices.length === 1 ? (
+              <p>
+                Remove &ldquo;{selectedDevices[0].device_name}&rdquo; from the
+                portal? This permanently deletes the device record, telemetry
+                history, and event log. The phone can register again later as a
+                new enrollment.
+              </p>
+            ) : (
+              <p>
+                Remove {selectedDevices.length} devices from the portal? This
+                permanently deletes each device record, telemetry history, and
+                event log. Phones can register again later as new enrollments.
+              </p>
+            )}
+            {selectedDevices.length > 1 ? (
+              <ul className="modal-device-list">
+                {selectedDevices.map((device) => (
+                  <li key={device.uid}>{device.device_name}</li>
+                ))}
+              </ul>
+            ) : null}
+          </ConfirmModal>
+        </>
       )}
     </div>
   );

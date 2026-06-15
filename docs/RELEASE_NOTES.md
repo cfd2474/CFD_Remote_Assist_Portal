@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.4 -->
+## Version 2.2.4
+
+**Portal**
+
+- Added row checkboxes and **select all** on the Managed Devices list.
+- Added bulk **Remove Device & Clear Data** with the same confirmation modal as single-device removal.
+
+<!-- RELEASE_END version=2.2.4 -->
+
 <!-- RELEASE_START version=2.2.3 -->
 ## Version 2.2.3
 
