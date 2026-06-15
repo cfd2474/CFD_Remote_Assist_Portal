@@ -134,7 +134,7 @@ wscat -c wss://remote.tak-solutions.com:8448/ws/device
 Expected health response:
 
 ```json
-{"status":"ok","service":"cfd-remote-assist"}
+{"status":"ok","service":"eud-remote-assist-portal","version":"2.0.0"}
 ```
 
 ---

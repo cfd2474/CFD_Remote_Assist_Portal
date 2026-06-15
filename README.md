@@ -1,4 +1,6 @@
-# CFD Remote Assist Portal
+# EUD Remote Assist Portal
+
+**Release:** 2.0.0 (see [`VERSION`](VERSION) and [docs/versioning.md](docs/versioning.md))
 
 Server-based web platform for remotely managing company-owned Android devices. Supports device registration, location tracking, ping requests, WebSocket command delivery, and WebRTC screen viewing with remote touch control.
 
@@ -97,6 +99,7 @@ cd /opt/cfd-remote-assist && git pull && docker compose up -d --build
 
 See:
 
+- [docs/versioning.md](docs/versioning.md) — release version checks for install automation
 - [docs/manual-install.md](docs/manual-install.md) — server setup on Ubuntu 22.04
 - [docs/authentik-setup.md](docs/authentik-setup.md) — OIDC provider setup
 - [docs/mdm-config.md](docs/mdm-config.md) — Android MDM managed config

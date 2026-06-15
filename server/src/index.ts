@@ -5,6 +5,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { WebSocketServer } from "ws";
 import { config } from "./config.js";
+import { SERVICE_NAME, VERSION } from "./version.js";
 import { deviceApiRouter } from "./routes/deviceApi.js";
 import { adminApiRouter } from "./routes/adminApi.js";
 import { attachWebSocketHandlers } from "./ws/handlers.js";
@@ -48,7 +49,11 @@ const deviceLimiter = rateLimit({
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "cfd-remote-assist" });
+  res.json({ status: "ok", service: SERVICE_NAME, version: VERSION });
+});
+
+app.get("/version", (_req, res) => {
+  res.json({ version: VERSION, service: SERVICE_NAME });
 });
 
 app.use("/api/v1", deviceLimiter, deviceApiRouter);
@@ -102,6 +107,8 @@ void resetLiveSessionFlags().then(async () => {
   setInterval(runLocationHistoryPurge, LOCATION_HISTORY_PURGE_MS);
 
   server.listen(config.port, () => {
-    console.log(`CFD Remote Assist server listening on port ${config.port}`);
+    console.log(
+      `EUD Remote Assist Portal v${VERSION} listening on port ${config.port}`
+    );
   });
 });

@@ -70,9 +70,17 @@ docker compose up -d --build
 Verify:
 
 ```bash
+cat VERSION
+# 2.0.0
+
 curl http://localhost/health
-# {"status":"ok","service":"cfd-remote-assist"}
+# {"status":"ok","service":"eud-remote-assist-portal","version":"2.0.0"}
+
+curl http://localhost/version
+# {"version":"2.0.0","service":"eud-remote-assist-portal"}
 ```
+
+See [versioning.md](versioning.md) for install automation and version checks.
 
 Open the portal at your configured URL and sign in via Authentik.
 
@@ -83,7 +91,9 @@ When new code is pushed to the repo:
 ```bash
 cd /opt/cfd-remote-assist
 git pull
+cat VERSION   # expected release after pull
 docker compose up -d --build
+curl -sS http://127.0.0.1:8091/version   # confirm running version matches VERSION
 ```
 
 Database migrations run automatically when the server container starts.
