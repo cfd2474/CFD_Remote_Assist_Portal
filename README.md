@@ -1,6 +1,6 @@
 # EUD Remote Assist Portal
 
-**Release:** 2.0.0 (see [`VERSION`](VERSION) and [docs/versioning.md](docs/versioning.md))
+**Release:** 2.1.0 (see [`VERSION`](VERSION) and [docs/versioning.md](docs/versioning.md))
 
 Server-based web platform for remotely managing company-owned Android devices. Supports device registration, location tracking, ping requests, WebSocket command delivery, and WebRTC screen viewing with remote touch control.
 
@@ -80,7 +80,8 @@ Portal: `http://localhost` (or your configured host)
 1. Push or pull from this repository as needed.
 2. On your Ubuntu 22.04 server, clone the repo and run Docker Compose.
 
-Full steps: [docs/manual-install.md](docs/manual-install.md)
+Full steps: [docs/manual-install.md](docs/manual-install.md)  
+infra-TAK co-deploy: [docs/infratak-integration.md](docs/infratak-integration.md)
 
 ```bash
 git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/cfd-remote-assist
@@ -99,6 +100,7 @@ cd /opt/cfd-remote-assist && git pull && docker compose up -d --build
 
 See:
 
+- [docs/infratak-integration.md](docs/infratak-integration.md) — infra-TAK loopback/Caddy profile (no compose patching)
 - [docs/versioning.md](docs/versioning.md) — release version checks for install automation
 - [docs/manual-install.md](docs/manual-install.md) — server setup on Ubuntu 22.04
 - [docs/authentik-setup.md](docs/authentik-setup.md) — OIDC provider setup

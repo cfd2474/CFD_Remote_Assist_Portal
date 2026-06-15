@@ -26,7 +26,7 @@ Verify:
 
 ```bash
 curl https://remote.tak-solutions.com:8448/health
-# {"status":"ok","service":"eud-remote-assist-portal","version":"2.0.0"}
+# {"status":"ok","service":"eud-remote-assist-portal","version":"2.1.0"}
 ```
 
 ---

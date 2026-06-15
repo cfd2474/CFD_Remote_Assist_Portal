@@ -40,26 +40,32 @@ Required values:
 | Variable | Example |
 |----------|---------|
 | `POSTGRES_PASSWORD` | Strong random password |
-| `PUBLIC_BASE_URL` | `https://remote.yourcompany.com` |
+| `PUBLIC_BASE_URL` | `https://remote.yourcompany.com:8448` |
+| `CORS_ORIGIN` | `https://remote.yourcompany.com` (admin portal, port 443) |
 | `OIDC_ISSUER` | `https://auth.yourcompany.com/application/o/cfd-remote-assist/` |
+| `OIDC_JWKS_URI` | `https://auth.yourcompany.com/application/o/cfd-remote-assist/jwks/` |
 | `OIDC_CLIENT_ID` | `cfd-remote-assist` |
 | `OIDC_AUDIENCE` | `cfd-remote-assist` (optional) |
-| `CORS_ORIGIN` | Same as `PUBLIC_BASE_URL` |
+| `NGINX_BIND_ADDR` | `127.0.0.1` when using host nginx (recommended) |
+| `HTTP_PORT` | `8091` when host nginx proxies to loopback (see host nginx examples) |
 
-See [authentik-setup.md](authentik-setup.md) for OIDC configuration.
+See [authentik-setup.md](authentik-setup.md) for OIDC configuration.  
+For **infra-TAK** co-deploy (Caddy, port 8767): [infratak-integration.md](infratak-integration.md).
 
 ## 4. TLS certificates (production)
 
-Place your certificate files in `nginx/certs/`:
+Docker nginx serves **HTTP only** on port 80. Terminate TLS on **host nginx** or **Caddy** (see `nginx/host-admin-portal.conf.example` and `nginx/host-device-api.conf.example`).
 
+Set loopback bind so Docker nginx is not publicly exposed:
+
+```env
+NGINX_BIND_ADDR=127.0.0.1
+HTTP_PORT=8091
 ```
-nginx/certs/fullchain.pem
-nginx/certs/privkey.pem
-```
 
-Then uncomment the HTTPS `server` block in `nginx/nginx.conf` and optionally add an HTTP → HTTPS redirect on port 80.
+Host nginx proxies `127.0.0.1:8091` for admin (443) and device API (8448).
 
-For testing without TLS, the default config serves everything on port 80.
+For local testing without host TLS, leave `NGINX_BIND_ADDR` empty and use `HTTP_PORT=80`.
 
 ## 5. Start the stack
 
@@ -71,13 +77,13 @@ Verify:
 
 ```bash
 cat VERSION
-# 2.0.0
+# 2.1.0
 
-curl http://localhost/health
-# {"status":"ok","service":"eud-remote-assist-portal","version":"2.0.0"}
+curl http://127.0.0.1:8091/health
+# {"status":"ok","service":"eud-remote-assist-portal","version":"2.1.0"}
 
-curl http://localhost/version
-# {"version":"2.0.0","service":"eud-remote-assist-portal"}
+curl http://127.0.0.1:8091/version
+# {"version":"2.1.0","service":"eud-remote-assist-portal"}
 ```
 
 See [versioning.md](versioning.md) for install automation and version checks.
@@ -104,8 +110,8 @@ Allow HTTP/HTTPS only:
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
+sudo ufw allow 443/tcp   # Admin portal
+sudo ufw allow 8448/tcp  # Android device API
 sudo ufw enable
 ```
 
