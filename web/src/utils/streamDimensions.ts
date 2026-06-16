@@ -27,20 +27,12 @@ export function isLandscape(dimensions: StreamDimensions): boolean {
   return dimensions.width > dimensions.height;
 }
 
-/** Prefer device-reported size when video track is still on the old orientation. */
+/** Prefer decoded video for panel sizing; use device hint only before the first frame. */
 export function mergeStreamDimensions(
   videoDimensions: StreamDimensions | null,
   deviceHint: StreamDimensions | null
 ): StreamDimensions | null {
   if (!deviceHint) return videoDimensions;
   if (!videoDimensions) return deviceHint;
-
-  const videoLandscape = isLandscape(videoDimensions);
-  const hintLandscape = isLandscape(deviceHint);
-
-  if (videoLandscape !== hintLandscape) {
-    return deviceHint;
-  }
-
   return videoDimensions;
 }

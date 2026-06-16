@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.15 -->
+## Version 2.2.15
+
+**Portal**
+
+- Reduce black screen on rotation when `ORIENTATION_CHANGED` arrives before landscape RTP decodes: panel aspect ratio now follows decoded video until `video.videoWidth/Height` updates (reintroduces v2.2.13 `mergeStreamDimensions` behavior).
+- Request an inbound keyframe when layout hints (`ORIENTATION_CHANGED` / `CAPTURE_RESIZED`) change during an active stream.
+
+<!-- RELEASE_END version=2.2.15 -->
+
 <!-- RELEASE_START version=2.2.14 -->
 ## Version 2.2.14
 

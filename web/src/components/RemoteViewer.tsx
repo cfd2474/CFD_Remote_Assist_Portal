@@ -62,6 +62,7 @@ export function RemoteViewer({
     deviceUid: uid,
     user,
     serverAnswerReceived,
+    layoutHint: streamLayoutHint,
   });
 
   const {

@@ -7,6 +7,7 @@ import {
   parseInboundSignaling,
   isAnswer,
 } from "../utils/webrtcSignaling";
+import type { StreamDimensions } from "../utils/streamDimensions";
 
 type StreamStatus =
   | "idle"
@@ -27,6 +28,8 @@ interface WebRtcOptions {
   user?: User | null;
   /** Server-side flag from signaling diagnostics — answer relayed but WS may have missed it */
   serverAnswerReceived?: boolean;
+  /** Device-reported capture/orientation size — triggers keyframe when it changes */
+  layoutHint?: StreamDimensions | null;
 }
 
 const OFFER_DELAY_MS = 20_000;
@@ -67,6 +70,7 @@ export function useWebRtcViewer({
   deviceUid,
   user,
   serverAnswerReceived = false,
+  layoutHint = null,
 }: WebRtcOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -691,6 +695,19 @@ export function useWebRtcViewer({
   }, [deviceStreamReady, enabled, signalingReady, streamActive, clearScheduleDelay, clearOfferRetry]);
 
   useEffect(() => cleanup, [cleanup]);
+
+  const layoutHintRef = useRef<StreamDimensions | null>(null);
+  useEffect(() => {
+    if (!layoutHint || !streamActive) {
+      if (!streamActive) layoutHintRef.current = null;
+      return;
+    }
+    const prev = layoutHintRef.current;
+    layoutHintRef.current = layoutHint;
+    if (prev?.width === layoutHint.width && prev?.height === layoutHint.height) return;
+    const pc = pcRef.current;
+    if (pc) void requestInboundKeyFrame(pc);
+  }, [layoutHint, streamActive, requestInboundKeyFrame]);
 
   return { videoRef, streamActive, status, error, setError, startSession, cleanup };
 }
