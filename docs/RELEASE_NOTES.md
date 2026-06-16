@@ -6,6 +6,20 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.12 -->
+## Version 2.2.12
+
+**Portal**
+
+- Fix indefinite "establishing video stream" state: media timeouts now verify inbound RTP, not just track objects; 90s hard deadline after answer; frame-wait timer no longer resets on duplicate attach.
+- H.264 added to WebRTC codec preferences alongside VP8/VP9.
+
+**Documentation**
+
+- Updated [android-webrtc-requirements.md](android-webrtc-requirements.md) for Android team review (connection_secret, ICE, track ordering, HTTP fallback, stuck-connecting symptoms).
+
+<!-- RELEASE_END version=2.2.12 -->
+
 <!-- RELEASE_START version=2.2.11 -->
 ## Version 2.2.11
 

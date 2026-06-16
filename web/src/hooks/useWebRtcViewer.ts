@@ -43,6 +43,9 @@ const NO_ICE_ERROR =
 const ICE_WAIT_MS = 20_000;
 const STREAM_WAIT_MS = 25_000;
 const FRAME_WAIT_MS = 30_000;
+/** Hard cap from SDP answer applied — prevents indefinite "connecting" if softer timers reset. */
+const MEDIA_DEADLINE_MS = 90_000;
+const MIN_INBOUND_BYTES = 1_000;
 
 const NO_RTP_ERROR =
   "WebRTC connected but the device sent no video packets. The Android app likely fired " +
@@ -76,6 +79,8 @@ export function useWebRtcViewer({
   const iceWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const frameWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaDeadlineRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const frameWaitTrackIdRef = useRef<string | null>(null);
   const offerAttemptRef = useRef(0);
   const receivedAnswerRef = useRef(false);
   const pendingAnswerRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -128,6 +133,14 @@ export function useWebRtcViewer({
       clearTimeout(frameWaitRef.current);
       frameWaitRef.current = null;
     }
+    frameWaitTrackIdRef.current = null;
+  }, []);
+
+  const clearMediaDeadline = useCallback(() => {
+    if (mediaDeadlineRef.current) {
+      clearTimeout(mediaDeadlineRef.current);
+      mediaDeadlineRef.current = null;
+    }
   }, []);
 
   const enqueueSignaling = useCallback((fn: () => Promise<void>) => {
@@ -177,6 +190,15 @@ export function useWebRtcViewer({
     return { bytesReceived, framesDecoded };
   }, []);
 
+  const hasInboundMedia = useCallback(
+    async (pc: RTCPeerConnection): Promise<boolean> => {
+      if (videoRef.current && videoRef.current.videoWidth > 0) return true;
+      const { bytesReceived, framesDecoded } = await getInboundVideoStats(pc);
+      return framesDecoded > 0 || bytesReceived >= MIN_INBOUND_BYTES;
+    },
+    [getInboundVideoStats]
+  );
+
   const markAnswerReceived = useCallback(() => {
     receivedAnswerRef.current = true;
     clearOfferRetry();
@@ -193,13 +215,45 @@ export function useWebRtcViewer({
       clearIceWait();
       clearStreamWait();
       clearFrameWait();
+      clearMediaDeadline();
     },
-    [clearNegotiationTimeout, clearOfferRetry, clearScheduleDelay, clearIceWait, clearStreamWait, clearFrameWait]
+    [clearNegotiationTimeout, clearOfferRetry, clearScheduleDelay, clearIceWait, clearStreamWait, clearFrameWait, clearMediaDeadline]
+  );
+
+  const scheduleMediaDeadline = useCallback(
+    (pc: RTCPeerConnection) => {
+      clearMediaDeadline();
+      mediaDeadlineRef.current = setTimeout(() => {
+        void (async () => {
+          if (pcRef.current !== pc) return;
+          if (await hasInboundMedia(pc)) return;
+          const iceOk =
+            pc.iceConnectionState === "connected" ||
+            pc.iceConnectionState === "completed";
+          setStreamActive(false);
+          setStatus("failed");
+          setError(
+            iceOk
+              ? "Answer received and ICE connected but no video frames reached the browser. Ensure the screen track is added to the PeerConnection before createAnswer(), send all ICE candidates, and negotiate VP8 or H.264."
+              : NO_RTP_ERROR
+          );
+        })();
+      }, MEDIA_DEADLINE_MS);
+    },
+    [clearMediaDeadline, hasInboundMedia]
   );
 
   const scheduleFrameWait = useCallback(
-    (pc: RTCPeerConnection, video: HTMLVideoElement) => {
+    (pc: RTCPeerConnection, video: HTMLVideoElement, trackId?: string) => {
+      if (
+        frameWaitRef.current &&
+        trackId &&
+        frameWaitTrackIdRef.current === trackId
+      ) {
+        return;
+      }
       clearFrameWait();
+      if (trackId) frameWaitTrackIdRef.current = trackId;
       frameWaitRef.current = setTimeout(() => {
         void (async () => {
           if (pcRef.current !== pc || !videoRef.current) return;
@@ -234,9 +288,14 @@ export function useWebRtcViewer({
       const video = videoRef.current;
       if (video.srcObject) {
         const existing = (video.srcObject as MediaStream).getVideoTracks()[0];
-        if (existing?.id === track.id && video.videoWidth > 0) {
-          markStreaming();
-          return true;
+        if (existing?.id === track.id) {
+          if (video.videoWidth > 0) {
+            markStreaming();
+            return true;
+          }
+          if (frameWaitRef.current && frameWaitTrackIdRef.current === track.id) {
+            return true;
+          }
         }
       }
 
@@ -261,7 +320,7 @@ export function useWebRtcViewer({
       };
 
       void requestInboundKeyFrame(pc);
-      scheduleFrameWait(pc, video);
+      scheduleFrameWait(pc, video, track.id);
       return true;
     },
     [markStreaming, requestInboundKeyFrame, scheduleFrameWait]
@@ -290,13 +349,17 @@ export function useWebRtcViewer({
     (pc: RTCPeerConnection) => {
       clearStreamWait();
       streamWaitRef.current = setTimeout(() => {
-        if (pcRef.current !== pc) return;
-        if (tryAttachFromReceivers(pc)) return;
-        setError(NO_STREAM_ERROR);
-        setStatus("failed");
+        void (async () => {
+          if (pcRef.current !== pc) return;
+          if (await hasInboundMedia(pc)) return;
+          if (tryAttachFromReceivers(pc) && (await hasInboundMedia(pc))) return;
+          setStreamActive(false);
+          setError(NO_STREAM_ERROR);
+          setStatus("failed");
+        })();
       }, STREAM_WAIT_MS);
     },
-    [clearStreamWait, tryAttachFromReceivers]
+    [clearStreamWait, tryAttachFromReceivers, hasInboundMedia]
   );
 
   const cleanup = useCallback(() => {
@@ -306,6 +369,7 @@ export function useWebRtcViewer({
     clearIceWait();
     clearStreamWait();
     clearFrameWait();
+    clearMediaDeadline();
     offerAttemptRef.current = 0;
     receivedAnswerRef.current = false;
     pendingAnswerRef.current = null;
@@ -319,7 +383,7 @@ export function useWebRtcViewer({
     }
     setStreamActive(false);
     setStatus("idle");
-  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait, clearStreamWait, clearFrameWait]);
+  }, [clearNegotiationTimeout, clearScheduleDelay, clearOfferRetry, clearIceWait, clearStreamWait, clearFrameWait, clearMediaDeadline]);
 
   const addRemoteIce = useCallback(
     async (ice: RTCIceCandidateInit) => {
@@ -362,9 +426,11 @@ export function useWebRtcViewer({
             clearScheduleDelay();
             clearOfferRetry();
             clearIceWait();
+            clearNegotiationTimeout();
             setError(null);
             setStatus("connecting");
             scheduleStreamWait(pc);
+            scheduleMediaDeadline(pc);
             tryAttachFromReceivers(pc);
             return true;
           }
@@ -387,34 +453,42 @@ export function useWebRtcViewer({
           receivedAnswerRef.current = true;
           pendingAnswerRef.current = null;
           clearIceWait();
+          clearNegotiationTimeout();
           setError(null);
           setStatus("connecting");
           await flushPendingIce(pc);
           tryAttachFromReceivers(pc);
           scheduleStreamWait(pc);
+          scheduleMediaDeadline(pc);
           iceWaitRef.current = setTimeout(() => {
-            if (pcRef.current !== pc) return;
-            if (
-              pc.connectionState !== "connected" &&
-              pc.iceConnectionState !== "connected" &&
-              pc.iceConnectionState !== "completed"
-            ) {
-              if (!tryAttachFromReceivers(pc)) {
-                setError(NO_ICE_ERROR);
-                setStatus("failed");
+            void (async () => {
+              if (pcRef.current !== pc) return;
+              if (await hasInboundMedia(pc)) return;
+              if (
+                pc.connectionState === "connected" ||
+                pc.iceConnectionState === "connected" ||
+                pc.iceConnectionState === "completed"
+              ) {
+                return;
               }
-            }
+              if (tryAttachFromReceivers(pc) && (await hasInboundMedia(pc))) return;
+              setStreamActive(false);
+              setError(NO_ICE_ERROR);
+              setStatus("failed");
+            })();
           }, ICE_WAIT_MS);
           return true;
         } catch (err) {
           if (pc.remoteDescription?.type === "answer") {
             receivedAnswerRef.current = true;
             pendingAnswerRef.current = null;
+            clearNegotiationTimeout();
             setError(null);
             setStatus("connecting");
             await flushPendingIce(pc);
             tryAttachFromReceivers(pc);
             scheduleStreamWait(pc);
+            scheduleMediaDeadline(pc);
             return true;
           }
           setStatus("failed");
@@ -432,9 +506,12 @@ export function useWebRtcViewer({
       clearScheduleDelay,
       clearOfferRetry,
       clearIceWait,
+      clearNegotiationTimeout,
       flushPendingIce,
       scheduleStreamWait,
+      scheduleMediaDeadline,
       tryAttachFromReceivers,
+      hasInboundMedia,
     ]
   );
 
@@ -450,6 +527,9 @@ export function useWebRtcViewer({
     clearScheduleDelay();
     clearOfferRetry();
     clearIceWait();
+    clearStreamWait();
+    clearFrameWait();
+    clearMediaDeadline();
     receivedAnswerRef.current = false;
     pendingAnswerRef.current = null;
     pendingIceRef.current = [];
@@ -530,7 +610,11 @@ export function useWebRtcViewer({
         const caps = RTCRtpReceiver.getCapabilities("video");
         const preferred = caps?.codecs.filter((codec) => {
           const mime = codec.mimeType.toLowerCase();
-          return mime === "video/vp8" || mime === "video/vp9";
+          return (
+            mime === "video/vp8" ||
+            mime === "video/vp9" ||
+            mime === "video/h264"
+          );
         });
         if (preferred?.length && "setCodecPreferences" in transceiver) {
           transceiver.setCodecPreferences(preferred);
@@ -567,6 +651,9 @@ export function useWebRtcViewer({
     clearOfferRetry,
     clearScheduleDelay,
     clearIceWait,
+    clearStreamWait,
+    clearFrameWait,
+    clearMediaDeadline,
     sendSignaling,
   ]);
 
