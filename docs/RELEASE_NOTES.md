@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.11 -->
+## Version 2.2.11
+
+**Portal**
+
+- Stop sending duplicate WebRTC offers after the device SDP answer is received (fixes stalled remote assist and unexpected `REMOTE_SESSION_STOPPED` on device).
+- Retry WebRTC button now forces a clean renegotiation when a session has failed.
+
+<!-- RELEASE_END version=2.2.11 -->
+
 <!-- RELEASE_START version=2.2.10 -->
 ## Version 2.2.10
 

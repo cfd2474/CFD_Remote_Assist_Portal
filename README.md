@@ -1,6 +1,6 @@
 # EUD Remote Assist Portal
 
-**Release:** 2.2.10 (see [`VERSION`](VERSION) and [docs/versioning.md](docs/versioning.md))
+**Release:** 2.2.11 (see [`VERSION`](VERSION) and [docs/versioning.md](docs/versioning.md))
 
 Server-based web platform for remotely managing company-owned Android devices. Supports device registration, location tracking, ping requests, WebSocket command delivery, and WebRTC screen viewing with remote touch control.
 

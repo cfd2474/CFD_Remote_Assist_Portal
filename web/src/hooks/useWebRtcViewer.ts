@@ -177,17 +177,24 @@ export function useWebRtcViewer({
     return { bytesReceived, framesDecoded };
   }, []);
 
+  const markAnswerReceived = useCallback(() => {
+    receivedAnswerRef.current = true;
+    clearOfferRetry();
+    clearScheduleDelay();
+  }, [clearOfferRetry, clearScheduleDelay]);
+
   const markStreaming = useCallback(() => {
       setStreamActive(true);
       setStatus("streaming");
       setError(null);
       clearNegotiationTimeout();
       clearOfferRetry();
+      clearScheduleDelay();
       clearIceWait();
       clearStreamWait();
       clearFrameWait();
     },
-    [clearNegotiationTimeout, clearOfferRetry, clearIceWait, clearStreamWait, clearFrameWait]
+    [clearNegotiationTimeout, clearOfferRetry, clearScheduleDelay, clearIceWait, clearStreamWait, clearFrameWait]
   );
 
   const scheduleFrameWait = useCallback(
@@ -431,9 +438,9 @@ export function useWebRtcViewer({
     ]
   );
 
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (options?: { force?: boolean }) => {
     if (startingSessionRef.current) return;
-    if (receivedAnswerRef.current && pcRef.current) {
+    if (!options?.force && receivedAnswerRef.current) {
       return;
     }
 
@@ -576,6 +583,7 @@ export function useWebRtcViewer({
         const { sdp, ice } = parseInboundSignaling(msg);
 
         if (sdp && isAnswer(sdp)) {
+          markAnswerReceived();
           await applyAnswer(sdp);
           return;
         }
@@ -587,7 +595,15 @@ export function useWebRtcViewer({
     };
 
     onSignaling(handleSignaling);
-  }, [enabled, cleanup, onSignaling, applyAnswer, addRemoteIce, enqueueSignaling]);
+  }, [
+    enabled,
+    cleanup,
+    onSignaling,
+    applyAnswer,
+    addRemoteIce,
+    enqueueSignaling,
+    markAnswerReceived,
+  ]);
 
   useEffect(() => {
     if (!enabled || !deviceUid || !user) return;
@@ -600,7 +616,10 @@ export function useWebRtcViewer({
           for (const msg of messages) {
             enqueueSignaling(async () => {
               const { sdp, ice } = parseInboundSignaling(msg);
-              if (sdp && isAnswer(sdp) && !receivedAnswerRef.current) {
+              if (sdp && isAnswer(sdp)) {
+                if (!receivedAnswerRef.current) {
+                  markAnswerReceived();
+                }
                 await applyAnswer(sdp);
               } else if (ice) {
                 await addRemoteIce(ice);
@@ -627,6 +646,7 @@ export function useWebRtcViewer({
     applyAnswer,
     addRemoteIce,
     enqueueSignaling,
+    markAnswerReceived,
   ]);
 
   const scheduleOffer = useCallback(() => {
@@ -640,11 +660,11 @@ export function useWebRtcViewer({
 
     scheduleDelayRef.current = setTimeout(() => {
       scheduleDelayRef.current = null;
-      if (receivedAnswerRef.current || deviceStreamReady) return;
+      if (receivedAnswerRef.current || deviceStreamReady || serverAnswerReceived) return;
       void startSessionRef.current?.();
 
       retryRef.current = setInterval(() => {
-        if (receivedAnswerRef.current || deviceStreamReady) {
+        if (receivedAnswerRef.current || deviceStreamReady || serverAnswerReceived) {
           clearOfferRetry();
           return;
         }
@@ -655,7 +675,13 @@ export function useWebRtcViewer({
         void startSessionRef.current?.();
       }, OFFER_RETRY_MS);
     }, OFFER_DELAY_MS);
-  }, [deviceStreamReady, clearOfferRetry, clearScheduleDelay, clearIceWait]);
+  }, [
+    deviceStreamReady,
+    serverAnswerReceived,
+    clearOfferRetry,
+    clearScheduleDelay,
+    clearIceWait,
+  ]);
 
   const autoStartedRef = useRef(false);
 
@@ -672,23 +698,33 @@ export function useWebRtcViewer({
       return;
     }
 
-    if (!autoStartedRef.current && !receivedAnswerRef.current) {
+    if (!autoStartedRef.current && !receivedAnswerRef.current && !serverAnswerReceived) {
       autoStartedRef.current = true;
       scheduleOffer();
     }
-  }, [enabled, signalingReady, scheduleOffer, cleanup, streamActive]);
+  }, [enabled, signalingReady, scheduleOffer, cleanup, streamActive, serverAnswerReceived]);
 
   useEffect(() => {
     if (!enabled || !signalingReady || !deviceStreamReady || streamActive) return;
-    if (receivedAnswerRef.current) return;
+    if (receivedAnswerRef.current || serverAnswerReceived) return;
     clearScheduleDelay();
     clearOfferRetry();
     setStatus("waiting");
     const warmup = window.setTimeout(() => {
-      if (!receivedAnswerRef.current) void startSessionRef.current?.();
+      if (!receivedAnswerRef.current && !serverAnswerReceived) {
+        void startSessionRef.current?.();
+      }
     }, CAPTURE_WARMUP_MS);
     return () => window.clearTimeout(warmup);
-  }, [deviceStreamReady, enabled, signalingReady, streamActive, clearScheduleDelay, clearOfferRetry]);
+  }, [
+    deviceStreamReady,
+    enabled,
+    signalingReady,
+    streamActive,
+    serverAnswerReceived,
+    clearScheduleDelay,
+    clearOfferRetry,
+  ]);
 
   useEffect(() => cleanup, [cleanup]);
 

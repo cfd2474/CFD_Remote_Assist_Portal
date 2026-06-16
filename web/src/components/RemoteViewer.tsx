@@ -101,7 +101,7 @@ export function RemoteViewer({
   return (
     <div className="remote-viewer">
       <div className="remote-toolbar">
-        <button type="button" onClick={() => void startSession()}>
+        <button type="button" onClick={() => void startSession({ force: true })}>
           {streamActive ? "Restart stream" : "Retry WebRTC"}
         </button>
         <span className={streamActive ? "status-ok" : "status-warn"}>
