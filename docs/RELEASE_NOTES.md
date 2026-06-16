@@ -6,6 +6,15 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.14 -->
+## Version 2.2.14
+
+**Portal**
+
+- Revert WebRTC viewer connection setup to the v2.2.6 behavior (`useWebRtcViewer`, `RemoteViewer`, `streamDimensions`). Removes 2.2.12–2.2.13 changes: RTP-stats media verification, 90s media deadline, H.264 codec preference, rotation keyframe requests, and hint-vs-frame dimension merge logic.
+
+<!-- RELEASE_END version=2.2.14 -->
+
 <!-- RELEASE_START version=2.2.13 -->
 ## Version 2.2.13
 

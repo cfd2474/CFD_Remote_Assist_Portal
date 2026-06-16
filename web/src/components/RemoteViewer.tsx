@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import type { User } from "oidc-client-ts";
 import { useRemoteVideoControl } from "../hooks/useRemoteVideoControl";
 import { useVideoStreamLayout } from "../hooks/useVideoStreamLayout";
@@ -53,28 +53,16 @@ export function RemoteViewer({
   serverAnswerReceived = false,
   streamLayoutHint = null,
 }: RemoteViewerProps) {
-  const { videoRef, streamActive, status, error, startSession, requestKeyFrame } =
-    useWebRtcViewer({
-      sendSignaling: sendWebRtc,
-      onSignaling,
-      enabled: active,
-      signalingReady: active && deviceOnline && adminWsConnected,
-      deviceStreamReady,
-      deviceUid: uid,
-      user,
-      serverAnswerReceived,
-    });
-
-  // On orientation/resize, the device changes capture resolution on the same track
-  // without renegotiating. The decoder needs a fresh keyframe to render the new size,
-  // otherwise the panel can stay black/frozen until the next periodic keyframe.
-  const hintW = streamLayoutHint?.width;
-  const hintH = streamLayoutHint?.height;
-  useEffect(() => {
-    if (!streamActive) return;
-    if (hintW == null || hintH == null) return;
-    requestKeyFrame();
-  }, [streamActive, hintW, hintH, requestKeyFrame]);
+  const { videoRef, streamActive, status, error, startSession } = useWebRtcViewer({
+    sendSignaling: sendWebRtc,
+    onSignaling,
+    enabled: active,
+    signalingReady: active && deviceOnline && adminWsConnected,
+    deviceStreamReady,
+    deviceUid: uid,
+    user,
+    serverAnswerReceived,
+  });
 
   const {
     panelRef,
@@ -113,7 +101,7 @@ export function RemoteViewer({
   return (
     <div className="remote-viewer">
       <div className="remote-toolbar">
-        <button type="button" onClick={() => void startSession({ force: true })}>
+        <button type="button" onClick={() => void startSession()}>
           {streamActive ? "Restart stream" : "Retry WebRTC"}
         </button>
         <span className={streamActive ? "status-ok" : "status-warn"}>
