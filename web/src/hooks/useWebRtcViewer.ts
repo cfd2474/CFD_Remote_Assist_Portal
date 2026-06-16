@@ -6,6 +6,7 @@ import {
   outboundOffer,
   parseInboundSignaling,
   isAnswer,
+  isOffer,
 } from "../utils/webrtcSignaling";
 import type { StreamDimensions } from "../utils/streamDimensions";
 
@@ -89,8 +90,13 @@ export function useWebRtcViewer({
   const signalingQueueRef = useRef<Promise<void>>(Promise.resolve());
   const startSessionRef = useRef<(() => Promise<void>) | null>(null);
   const [streamActive, setStreamActive] = useState(false);
+  const streamActiveRef = useRef(false);
   const [status, setStatus] = useState<StreamStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    streamActiveRef.current = streamActive;
+  }, [streamActive]);
 
   const clearNegotiationTimeout = useCallback(() => {
     if (timeoutRef.current) {
@@ -435,6 +441,36 @@ export function useWebRtcViewer({
     ]
   );
 
+  /** Device-initiated renegotiation (e.g. after screen rotation) while stream is active. */
+  const applyRenegotiationOffer = useCallback(
+    async (sdp: RTCSessionDescriptionInit): Promise<boolean> => {
+      const pc = pcRef.current;
+      if (!pc || !streamActiveRef.current) {
+        return false;
+      }
+      if (pc.signalingState !== "stable") {
+        console.warn(
+          "[WebRTC] Ignoring device renegotiation offer: signalingState=",
+          pc.signalingState
+        );
+        return false;
+      }
+      try {
+        console.log("[WebRTC] Applying device renegotiation offer (rotation recovery)");
+        await pc.setRemoteDescription(sdp);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendSignaling(outboundOffer(answer));
+        void requestInboundKeyFrame(pc);
+        return true;
+      } catch (err) {
+        console.warn("[WebRTC] Renegotiation failed:", err);
+        return false;
+      }
+    },
+    [sendSignaling, requestInboundKeyFrame]
+  );
+
   const startSession = useCallback(async () => {
     if (startingSessionRef.current) return;
     if (receivedAnswerRef.current && pcRef.current) {
@@ -584,6 +620,11 @@ export function useWebRtcViewer({
           return;
         }
 
+        if (sdp && isOffer(sdp)) {
+          await applyRenegotiationOffer(sdp);
+          return;
+        }
+
         if (ice) {
           await addRemoteIce(ice);
         }
@@ -591,7 +632,7 @@ export function useWebRtcViewer({
     };
 
     onSignaling(handleSignaling);
-  }, [enabled, cleanup, onSignaling, applyAnswer, addRemoteIce, enqueueSignaling]);
+  }, [enabled, cleanup, onSignaling, applyAnswer, applyRenegotiationOffer, addRemoteIce, enqueueSignaling]);
 
   useEffect(() => {
     if (!enabled || !deviceUid || !user) return;
@@ -604,7 +645,9 @@ export function useWebRtcViewer({
           for (const msg of messages) {
             enqueueSignaling(async () => {
               const { sdp, ice } = parseInboundSignaling(msg);
-              if (sdp && isAnswer(sdp) && !receivedAnswerRef.current) {
+              if (sdp && isOffer(sdp) && streamActiveRef.current) {
+                await applyRenegotiationOffer(sdp);
+              } else if (sdp && isAnswer(sdp) && !receivedAnswerRef.current) {
                 await applyAnswer(sdp);
               } else if (ice) {
                 await addRemoteIce(ice);
@@ -629,6 +672,7 @@ export function useWebRtcViewer({
     status,
     streamActive,
     applyAnswer,
+    applyRenegotiationOffer,
     addRemoteIce,
     enqueueSignaling,
   ]);

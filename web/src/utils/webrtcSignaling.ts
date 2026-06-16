@@ -57,3 +57,7 @@ export function parseInboundSignaling(msg: Record<string, unknown>): {
 export function isAnswer(sdp: RTCSessionDescriptionInit): boolean {
   return sdp.type === "answer";
 }
+
+export function isOffer(sdp: RTCSessionDescriptionInit): boolean {
+  return sdp.type === "offer";
+}

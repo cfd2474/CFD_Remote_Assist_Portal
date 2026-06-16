@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.16 -->
+## Version 2.2.16
+
+**Portal**
+
+- Accept device-initiated WebRTC offers during an active stream (rotation renegotiation): answer with a new SDP answer instead of ignoring offers when `signalingState` is stable.
+- HTTP signaling replay also applies renegotiation offers when the stream is already active.
+
+<!-- RELEASE_END version=2.2.16 -->
+
 <!-- RELEASE_START version=2.2.15 -->
 ## Version 2.2.15
 
