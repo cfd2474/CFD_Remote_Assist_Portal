@@ -462,13 +462,15 @@ export function useWebRtcViewer({
         await pc.setLocalDescription(answer);
         sendSignaling(outboundOffer(answer));
         void requestInboundKeyFrame(pc);
+        tryAttachFromReceivers(pc);
+        scheduleStreamWait(pc);
         return true;
       } catch (err) {
         console.warn("[WebRTC] Renegotiation failed:", err);
         return false;
       }
     },
-    [sendSignaling, requestInboundKeyFrame]
+    [sendSignaling, requestInboundKeyFrame, tryAttachFromReceivers, scheduleStreamWait]
   );
 
   const startSession = useCallback(async () => {

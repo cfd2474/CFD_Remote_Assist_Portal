@@ -6,6 +6,15 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.17 -->
+## Version 2.2.17
+
+**Portal**
+
+- After applying a device-initiated renegotiation offer (rotation recovery or PeerConnection restart), re-attach the video element and schedule stream recovery so the viewer resumes when ICE restarts.
+
+<!-- RELEASE_END version=2.2.17 -->
+
 <!-- RELEASE_START version=2.2.16 -->
 ## Version 2.2.16
 
