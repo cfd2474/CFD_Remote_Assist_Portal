@@ -5,7 +5,7 @@ import { useVideoStreamLayout } from "../hooks/useVideoStreamLayout";
 import { useWebRtcViewer } from "../hooks/useWebRtcViewer";
 
 import type { ControlPacket } from "../types";
-import type { StreamDimensions } from "../utils/streamDimensions";
+import type { StreamDimensions, StreamOrientation } from "../utils/streamDimensions";
 
 interface RemoteViewerProps {
   uid: string;
@@ -20,6 +20,8 @@ interface RemoteViewerProps {
   deviceStreamReady: boolean;
   serverAnswerReceived?: boolean;
   streamLayoutHint?: StreamDimensions | null;
+  streamLayoutRevision?: number;
+  deviceOrientation?: StreamOrientation | null;
 }
 
 function statusLabel(
@@ -52,6 +54,8 @@ export function RemoteViewer({
   deviceStreamReady,
   serverAnswerReceived = false,
   streamLayoutHint = null,
+  streamLayoutRevision = 0,
+  deviceOrientation = null,
 }: RemoteViewerProps) {
   const { videoRef, streamActive, status, error, startSession } = useWebRtcViewer({
     sendSignaling: sendWebRtc,
@@ -63,6 +67,7 @@ export function RemoteViewer({
     user,
     serverAnswerReceived,
     layoutHint: streamLayoutHint,
+    layoutRevision: streamLayoutRevision,
   });
 
   const {
@@ -88,7 +93,8 @@ export function RemoteViewer({
   const { landscape, aspectRatio } = useVideoStreamLayout(
     videoRef,
     streamActive,
-    streamLayoutHint
+    streamLayoutHint,
+    deviceOrientation
   );
 
   if (!active) {

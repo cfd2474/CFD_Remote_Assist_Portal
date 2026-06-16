@@ -9,6 +9,17 @@ export function isLayoutEvent(event: string | undefined): boolean {
   return event != null && LAYOUT_EVENTS.has(event);
 }
 
+export type StreamOrientation = "portrait" | "landscape";
+
+export function parseStreamOrientation(payload: unknown): StreamOrientation | null {
+  if (!payload || typeof payload !== "object") return null;
+  const orientation = (payload as Record<string, unknown>).orientation;
+  if (orientation === "portrait" || orientation === "landscape") {
+    return orientation;
+  }
+  return null;
+}
+
 export function parseStreamDimensions(payload: unknown): StreamDimensions | null {
   if (!payload || typeof payload !== "object") return null;
 

@@ -9,7 +9,8 @@ export type { StreamDimensions };
 export function useVideoStreamLayout(
   videoRef: RefObject<HTMLVideoElement | null>,
   active: boolean,
-  deviceHint: StreamDimensions | null = null
+  deviceHint: StreamDimensions | null = null,
+  deviceOrientation: "portrait" | "landscape" | null = null
 ) {
   const [videoDimensions, setVideoDimensions] = useState<StreamDimensions | null>(
     null
@@ -44,7 +45,12 @@ export function useVideoStreamLayout(
   }, [active, videoRef]);
 
   const dimensions = mergeStreamDimensions(videoDimensions, deviceHint);
-  const landscape = dimensions ? dimensions.width > dimensions.height : false;
+  const landscape =
+    deviceOrientation != null
+      ? deviceOrientation === "landscape"
+      : dimensions
+        ? dimensions.width > dimensions.height
+        : false;
 
   return {
     dimensions,

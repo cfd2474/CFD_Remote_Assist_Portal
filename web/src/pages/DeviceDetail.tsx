@@ -7,10 +7,10 @@ import { DeviceLocationPanel } from "../components/DeviceLocationPanel";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { RemoteViewer } from "../components/RemoteViewer";
 import type { Device, DeviceCommand } from "../types";
-import { isLayoutEvent, parseStreamDimensions } from "../utils/streamDimensions";
+import { isLayoutEvent, parseStreamDimensions, parseStreamOrientation } from "../utils/streamDimensions";
 import { formatPhoneNumber } from "../utils/formatPhoneNumber";
 import { isNewerVersion } from "../utils/compareSemver";
-import type { StreamDimensions } from "../utils/streamDimensions";
+import type { StreamDimensions, StreamOrientation } from "../utils/streamDimensions";
 
 export function DeviceDetail() {
   const { uid } = useParams<{ uid: string }>();
@@ -35,6 +35,10 @@ export function DeviceDetail() {
   const [unlockPin, setUnlockPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [streamLayoutHint, setStreamLayoutHint] = useState<StreamDimensions | null>(
+    null
+  );
+  const [streamLayoutRevision, setStreamLayoutRevision] = useState(0);
+  const [deviceOrientation, setDeviceOrientation] = useState<StreamOrientation | null>(
     null
   );
   const [latestApkVersion, setLatestApkVersion] = useState<string | null>(null);
@@ -79,6 +83,9 @@ export function DeviceDetail() {
       setUnlockPin("");
     }
     if (isLayoutEvent(String(lastEvent?.event))) {
+      setStreamLayoutRevision((revision) => revision + 1);
+      const orientation = parseStreamOrientation(lastEvent?.payload);
+      if (orientation) setDeviceOrientation(orientation);
       const dimensions = parseStreamDimensions(lastEvent?.payload);
       if (dimensions) setStreamLayoutHint(dimensions);
     }
@@ -117,6 +124,8 @@ export function DeviceDetail() {
   useEffect(() => {
     if (!remoteActive) {
       setStreamLayoutHint(null);
+      setStreamLayoutRevision(0);
+      setDeviceOrientation(null);
       setDeviceLocked(false);
       setDeviceLockedReason(null);
       setUnlockPin("");
@@ -489,6 +498,8 @@ export function DeviceDetail() {
           deviceStreamReady={deviceStreamReady}
           serverAnswerReceived={signalingStatus?.answerReceived ?? false}
           streamLayoutHint={streamLayoutHint}
+          streamLayoutRevision={streamLayoutRevision}
+          deviceOrientation={deviceOrientation}
         />
       </section>
 

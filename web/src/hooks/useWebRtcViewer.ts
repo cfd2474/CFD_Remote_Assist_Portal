@@ -31,6 +31,8 @@ interface WebRtcOptions {
   serverAnswerReceived?: boolean;
   /** Device-reported capture/orientation size — triggers keyframe when it changes */
   layoutHint?: StreamDimensions | null;
+  /** Increments on every ORIENTATION_CHANGED — triggers keyframe even when capture size is unchanged */
+  layoutRevision?: number;
 }
 
 const OFFER_DELAY_MS = 20_000;
@@ -72,6 +74,7 @@ export function useWebRtcViewer({
   user,
   serverAnswerReceived = false,
   layoutHint = null,
+  layoutRevision = 0,
 }: WebRtcOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -754,6 +757,21 @@ export function useWebRtcViewer({
     const pc = pcRef.current;
     if (pc) void requestInboundKeyFrame(pc);
   }, [layoutHint, streamActive, requestInboundKeyFrame]);
+
+  const layoutRevisionRef = useRef(0);
+  useEffect(() => {
+    if (!streamActive || layoutRevision <= 0) {
+      if (!streamActive) layoutRevisionRef.current = 0;
+      return;
+    }
+    if (layoutRevisionRef.current === layoutRevision) return;
+    layoutRevisionRef.current = layoutRevision;
+    const pc = pcRef.current;
+    if (pc) {
+      console.log("[WebRTC] ORIENTATION_CHANGED — requesting inbound keyframe");
+      void requestInboundKeyFrame(pc);
+    }
+  }, [layoutRevision, streamActive, requestInboundKeyFrame]);
 
   return { videoRef, streamActive, status, error, setError, startSession, cleanup };
 }
