@@ -61,3 +61,9 @@ export function isAnswer(sdp: RTCSessionDescriptionInit): boolean {
 export function isOffer(sdp: RTCSessionDescriptionInit): boolean {
   return sdp.type === "offer";
 }
+
+/** Device-initiated mid-session offers include sendonly video; portal offers are recvonly. */
+export function isDeviceRenegotiationOffer(sdp: RTCSessionDescriptionInit): boolean {
+  const text = sdp.sdp ?? "";
+  return sdp.type === "offer" && /a=sendonly/.test(text);
+}

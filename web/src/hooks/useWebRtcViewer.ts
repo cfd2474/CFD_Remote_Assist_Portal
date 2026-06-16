@@ -7,6 +7,7 @@ import {
   parseInboundSignaling,
   isAnswer,
   isOffer,
+  isDeviceRenegotiationOffer,
 } from "../utils/webrtcSignaling";
 import type { StreamDimensions } from "../utils/streamDimensions";
 
@@ -626,6 +627,10 @@ export function useWebRtcViewer({
         }
 
         if (sdp && isOffer(sdp)) {
+          if (!isDeviceRenegotiationOffer(sdp)) {
+            console.warn("[WebRTC] Ignoring recvonly offer during active stream");
+            return;
+          }
           await applyRenegotiationOffer(sdp);
           return;
         }
@@ -651,7 +656,9 @@ export function useWebRtcViewer({
             enqueueSignaling(async () => {
               const { sdp, ice } = parseInboundSignaling(msg);
               if (sdp && isOffer(sdp) && streamActiveRef.current) {
-                await applyRenegotiationOffer(sdp);
+                if (isDeviceRenegotiationOffer(sdp)) {
+                  await applyRenegotiationOffer(sdp);
+                }
               } else if (sdp && isAnswer(sdp) && !receivedAnswerRef.current) {
                 await applyAnswer(sdp);
               } else if (ice) {
@@ -769,9 +776,10 @@ export function useWebRtcViewer({
     const pc = pcRef.current;
     if (pc) {
       console.log("[WebRTC] ORIENTATION_CHANGED — requesting inbound keyframe");
+      tryAttachFromReceivers(pc);
       void requestInboundKeyFrame(pc);
     }
-  }, [layoutRevision, streamActive, requestInboundKeyFrame]);
+  }, [layoutRevision, streamActive, requestInboundKeyFrame, tryAttachFromReceivers]);
 
   return { videoRef, streamActive, status, error, setError, startSession, cleanup };
 }

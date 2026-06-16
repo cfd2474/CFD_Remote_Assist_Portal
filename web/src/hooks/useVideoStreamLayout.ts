@@ -45,18 +45,37 @@ export function useVideoStreamLayout(
   }, [active, videoRef]);
 
   const dimensions = mergeStreamDimensions(videoDimensions, deviceHint);
+
+  // During rotation the decoder may still report the old size while the device
+  // hint already reflects the new orientation — use the hint for panel sizing.
+  const hintLandscape =
+    deviceOrientation != null
+      ? deviceOrientation === "landscape"
+      : deviceHint
+        ? deviceHint.width > deviceHint.height
+        : null;
+  const videoLandscape = videoDimensions
+    ? videoDimensions.width > videoDimensions.height
+    : null;
+  const rotationTransition =
+    hintLandscape != null &&
+    videoLandscape != null &&
+    hintLandscape !== videoLandscape;
+  const layoutDimensions =
+    rotationTransition && deviceHint ? deviceHint : dimensions;
+
   const landscape =
     deviceOrientation != null
       ? deviceOrientation === "landscape"
-      : dimensions
-        ? dimensions.width > dimensions.height
+      : layoutDimensions
+        ? layoutDimensions.width > layoutDimensions.height
         : false;
 
   return {
-    dimensions,
+    dimensions: layoutDimensions,
     landscape,
-    aspectRatio: dimensions
-      ? `${dimensions.width} / ${dimensions.height}`
+    aspectRatio: layoutDimensions
+      ? `${layoutDimensions.width} / ${layoutDimensions.height}`
       : undefined,
   };
 }
