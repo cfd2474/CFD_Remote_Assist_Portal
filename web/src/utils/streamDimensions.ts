@@ -27,20 +27,20 @@ export function isLandscape(dimensions: StreamDimensions): boolean {
   return dimensions.width > dimensions.height;
 }
 
-/** Prefer device-reported size when video track is still on the old orientation. */
+/**
+ * Size the panel from the **actual decoded video frame** whenever it is known, so
+ * the visible frame always fills the panel. The device orientation hint only seeds
+ * the layout before the first frame arrives.
+ *
+ * Previously this preferred the device hint whenever its orientation differed from
+ * the current frame. That flipped the panel to the new orientation *before* the
+ * video resolution changed, letterboxing the old frame into the new aspect ratio —
+ * which shows up as a black panel on rotation.
+ */
 export function mergeStreamDimensions(
   videoDimensions: StreamDimensions | null,
   deviceHint: StreamDimensions | null
 ): StreamDimensions | null {
-  if (!deviceHint) return videoDimensions;
-  if (!videoDimensions) return deviceHint;
-
-  const videoLandscape = isLandscape(videoDimensions);
-  const hintLandscape = isLandscape(deviceHint);
-
-  if (videoLandscape !== hintLandscape) {
-    return deviceHint;
-  }
-
-  return videoDimensions;
+  if (videoDimensions) return videoDimensions;
+  return deviceHint;
 }

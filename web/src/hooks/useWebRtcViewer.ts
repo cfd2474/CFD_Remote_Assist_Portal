@@ -815,5 +815,19 @@ export function useWebRtcViewer({
 
   useEffect(() => cleanup, [cleanup]);
 
-  return { videoRef, streamActive, status, error, setError, startSession, cleanup };
+  const requestKeyFrame = useCallback(() => {
+    const pc = pcRef.current;
+    if (pc) void requestInboundKeyFrame(pc);
+  }, [requestInboundKeyFrame]);
+
+  return {
+    videoRef,
+    streamActive,
+    status,
+    error,
+    setError,
+    startSession,
+    cleanup,
+    requestKeyFrame,
+  };
 }

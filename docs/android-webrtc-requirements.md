@@ -205,14 +205,16 @@ Coordinates are **0.0–1.0** fractions of the **physical display** (not the sca
 |--------------|---------------------|
 | “Waiting for device stream” | No `webrtc_ready`, capture not started, or offer not received |
 | “Negotiating WebRTC” | No SDP answer received |
-| “Answer received — establishing video stream…” (stuck) | Answer + ICE sent but **no RTP reaching browser** — track added after `createAnswer()`, missing device ICE, or renegotiation pending |
+| “Answer received — establishing video stream…” (stuck) | **ICE+DTLS connected but device sends no RTP** — MediaProjection token reused/single-use, `startCapture()` not called, or track not wired to the running capturer (see note below) |
 | “Stream failed” (ICE error) | Answer received but **no ICE candidates** from device |
 | “Stream failed” (no track) | SDP answer missing sendonly video m-line |
 | “Stream failed” (no RTP) | ICE connected locally but screen capture not feeding the video track |
 | Black screen while “streaming” | Encoder/codec issue or 0×0 capture |
 | “Device offline” | WebSocket disconnected during session |
 
-**Recent logcat pattern (device ICE `CONNECTED`, portal stuck connecting):** Device completed signaling and ICE, but the browser never decoded video frames. Most often: screen track added after answer (renegotiation not completed), or device ICE candidates not reaching the portal.
+**Confirmed current bug (2026-06-15, via `chrome://webrtc-internals`):** ICE **and** DTLS reach `connected` (host↔host on the same LAN), `candidate-pair: succeeded`, but there is **no `inbound-rtp` video — zero frames**. Signaling/SDP/ICE/DTLS are all correct; the **device is not sending RTP video**. This is a device-side media-production problem, not signaling.
+
+Look on the device for: (1) **single-use MediaProjection token reused** across sessions (capture silently yields no frames) — request a fresh permission result per `START_REMOTE_ADMIN`; (2) `ScreenCapturerAndroid.startCapture(w,h,fps)` not called or bad size; (3) the negotiated `VideoTrack` not wired to the running capturer's `VideoSource` (`createVideoSource(isScreencast=true)`); (4) `videoTrack.setEnabled(true)`; (5) encoder init failure. Confirm by counting `onFrame` on the source and `outbound-rtp.framesEncoded` via `getStats()` — both must climb.
 
 ---
 

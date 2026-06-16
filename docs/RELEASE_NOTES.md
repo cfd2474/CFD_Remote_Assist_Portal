@@ -6,6 +6,21 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.13 -->
+## Version 2.2.13
+
+**Portal**
+
+- Fix black screen on device rotation: panel aspect ratio now follows the actual decoded video frame instead of flipping early on `ORIENTATION_CHANGED` hints.
+- Request a keyframe when orientation/size hints change so the browser recovers quickly after capture resize.
+
+**Documentation**
+
+- Expanded [android-app-requirements.md](android-app-requirements.md) with full WebRTC diagnosis, control handling, and rotation requirements for the app team.
+- Corrected WebRTC troubleshooting in [android-webrtc-requirements.md](android-webrtc-requirements.md) based on `chrome://webrtc-internals` evidence.
+
+<!-- RELEASE_END version=2.2.13 -->
+
 <!-- RELEASE_START version=2.2.12 -->
 ## Version 2.2.12
 
