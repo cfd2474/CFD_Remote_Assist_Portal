@@ -1,0 +1,492 @@
+EUD REMOTE ASSIST ANDROID — SCREEN ROTATION FIX
+Handoff for app project AI agent
+Portal: v2.2.14 @ remote.tak-solutions.com:8448
+Device tested: fd72b785310f3536 (Galaxy S21 5G)
+Date: 2026-06-16 (updated after 10:03 PDT retest)
+
+================================================================================
+PROBLEM
+================================================================================
+
+During an active remote-assist session, rotating the phone causes the admin
+portal video to go black or freeze. Server logs prove signaling is healthy.
+The break is on the device encoder/RtpSender side after capture resize — NOT
+on the portal relay.
+
+Current state (post partial app fix):
+  - Screen capture resize WORKS (landscape frames arrive)
+  - VP8 encoder / outbound-rtp STALLS after changeCaptureFormat
+  - ORIENTATION_CHANGED is gated on framesEncoded → never sent when encoder stalls
+  - Portal shows frozen portrait RTP or black decoder output
+
+
+================================================================================
+SERVER EVIDENCE — LATEST SESSION (CONFIRMED ON PRODUCTION)
+================================================================================
+
+Session: 2026-06-16 17:03:08–17:03:40 UTC  (10:03 PDT local — matches logcat)
+
+  17:03:08  START_REMOTE_ADMIN
+  17:03:08  Signaling hint sent
+  17:03:10  WEBRTC_READY (correct — once at start)
+  17:03:13  WebRTC offer → answer + 6 device ICE candidates — SUCCESS
+  17:03:13  REMOTE_SESSION_STARTED
+  17:03:40  STOP_REMOTE_ADMIN
+
+NOTABLE ABSENCE:
+
+  - NO ORIENTATION_CHANGED for this session
+  - NO post-rotation WebRTC messages (expected — ICE stayed up)
+
+CONCLUSION: Portal/server healthy. App blocked ORIENTATION_CHANGED because
+outbound-rtp framesEncoded did not increase after rotation (see logcat).
+Admin still saw black/frozen video because encoder stopped sending RTP even
+though capturer delivered landscape frames.
+
+
+================================================================================
+MATCHING LOGCAT — LATEST SESSION (10:03 PDT)
+================================================================================
+
+Pre-rotation (OK):
+
+  10:03:10  FIRST FRAME CAPTURED! 540x1200
+  10:03:13  ICE CONNECTED, answer sent
+  10:03:15  CLICK mapped display=1080x2400 stream=540x1200 — touch OK
+  10:03:17  CLICK mapped display=1080x2400 stream=540x1200 — touch OK
+
+Rotation (partial fix — capture OK, encoder FAILED):
+
+  10:03:22  Configuration changed, checking orientation
+  10:03:22  Rotation: 540x1200 -> 1200x540  (background thread — improvement)
+  10:03:22  FIRST FRAME CAPTURED! 1200x540   (capture resize WORKS)
+  10:03:24  Rotation failed: outbound-rtp framesEncoded not increasing
+  10:03:21  Skipped 172 frames — main thread still janky around rotation
+
+MISSING after rotation:
+
+  - NO ORIENTATION_CHANGED sent (blocked by framesEncoded gate in ScreenShareService.kt ~348-350)
+  - NO outbound-rtp framesEncoded climbing
+  - Touch mapping stayed at stream=540x1200 (captureWidth not updated)
+
+
+================================================================================
+SERVER EVIDENCE — PRIOR SESSION (FOR COMPARISON)
+================================================================================
+
+Session: 2026-06-16 16:44:56–16:45:47 UTC  (earlier build — hint sent too early)
+
+  16:44:56  START_REMOTE_ADMIN
+  16:45:01  WebRTC offer → answer + 8 ICE — SUCCESS
+  16:45:02  REMOTE_SESSION_STARTED
+  16:45:30  Keyboard control working
+  16:45:41  ORIENTATION_CHANGED received by server
+  16:45:47  STOP_REMOTE_ADMIN
+
+That session sent ORIENTATION_CHANGED but capture/encoder also failed — portal
+flipped panel to landscape while video stayed portrait → black letterboxing.
+
+Earlier logcat (08:31 PDT, pre-fix build):
+
+  08:31:22  ORIENTATION_CHANGED sent BEFORE capture confirmed at new size
+  08:31:22  Skipped 306 frames — main thread blocked
+  NO "FIRST FRAME CAPTURED! 1200x540"
+
+
+================================================================================
+HOW THE PORTAL USES YOUR MESSAGES (v2.2.14)
+================================================================================
+
+1. Send ORIENTATION_CHANGED on device WebSocket:
+
+   {
+     "type": "device_event",
+     "uid": "<device-uid>",
+     "event": "ORIENTATION_CHANGED",
+     "payload": {
+       "width": <capture-width>,
+       "height": <capture-height>,
+       "orientation": "portrait" | "landscape"
+     }
+   }
+
+   CAPTURE_RESIZED with the same payload shape is also accepted.
+
+2. Portal sizes the video panel from:
+   - Decoded video frame (videoWidth / videoHeight), AND
+   - Your hint when orientations differ
+
+   When hint says landscape but video is still portrait, the portal panel
+   flips to landscape IMMEDIATELY. Video stays portrait inside a landscape
+   panel → black letterboxing / frozen image until new frames decode.
+
+3. Portal does NOT:
+   - Apply a second SDP answer mid-session (PeerConnection already stable)
+   - Request a keyframe when your hint arrives
+   - Use WEBRTC_READY for anything except faster first offer
+
+4. Touch coordinates use decoded video size, not your hint. Until video
+   resizes, clicks may be offset if panel already flipped.
+
+
+================================================================================
+ROOT CAUSE (NARROWED — 10:03 RETEST)
+================================================================================
+
+  Layer              Status
+  -----------------  ----------------------------------------------------------
+  Portal / server    Healthy — full WebRTC handshake, relay OK
+  Screen capture     FIXED — changeCaptureFormat + FIRST FRAME at 1200x540
+  VP8 encoder/RTP    BROKEN — framesEncoded stalls after resize
+  ORIENTATION_CHANGED Blocked — only sent after framesEncoded increases
+  Touch mapping      Stale — captureWidth/Height not updated when gate fails
+
+The capturer delivers landscape VideoFrames to VideoSource, but the existing
+RtpSender/encoder negotiated for portrait does not resume encoding. This is
+the remaining bug. Fixing capture alone is not enough.
+
+
+================================================================================
+REQUIRED FIX
+================================================================================
+
+GOAL
+----
+On rotation during active remote assist:
+
+  A) Resize capture on the SAME PeerConnection and SAME video track  [DONE]
+  B) Resume sending RTP at the new resolution  [BROKEN — FIX THIS]
+  C) Send ORIENTATION_CHANGED + update touch mapping once capture confirmed
+  D) Keep ICE connected — no session teardown
+  E) Keep heavy work off the main thread  [PARTIAL — still janky]
+
+
+STEP 1 — DETECT ROTATION  [DONE]
+--------------------------------
+On Configuration change / display rotation:
+
+  val bounds = windowManager.currentWindowMetrics.bounds
+  val displayW = bounds.width()
+  val displayH = bounds.height()
+
+Use CURRENT metrics — never cached values from before rotation.
+
+Match your existing capture scaling (log shows half-scale):
+
+  captureW = displayW / 2   // e.g. 540 portrait, 1200 landscape
+  captureH = displayH / 2   // e.g. 1200 portrait, 540 landscape
+
+
+STEP 2 — RESIZE CAPTURE ON SAME SESSION  [DONE]
+-----------------------------------------------
+Do NOT:
+
+  - Stop MediaProjection
+  - Recreate PeerConnection
+  - Send WEBRTC_READY mid-session
+  - Tear down remote session
+  - Send second SDP answer expecting portal to apply it
+
+DO (already implemented in ScreenShareService.kt ~299-318):
+
+  - Call on EXISTING ScreenCapturerAndroid:
+      videoCapturer.changeCaptureFormat(captureW, captureH, 30)
+
+  - Keep SAME VideoSource / VideoTrack / RtpSender from initial answer
+
+  - Run on serviceExecutor (background thread)
+
+  - Wait for capturer onFrame at NEW dimensions via lastRotatedWidth/Height
+  - Log: "FIRST FRAME CAPTURED! {w}x{h}" at new size
+
+
+STEP 3 — KICK ENCODER AFTER RESIZE  [NEW — CRITICAL]
+----------------------------------------------------
+changeCaptureFormat alone is NOT sufficient on Galaxy S21 / WebRTC Android.
+After first frame at new size, force the encoder/RtpSender to resume:
+
+Try in order (stop when framesEncoded resumes):
+
+  1. Toggle track enabled:
+       localVideoTrack?.setEnabled(false)
+       localVideoTrack?.setEnabled(true)
+
+  2. Re-attach track on existing transceiver:
+       val tx = peerConnection.transceivers.find { it.mediaType == VIDEO }
+       tx?.sender?.setTrack(localVideoTrack, true)
+
+  3. If onRenegotiationNeeded fired during resize, do NOT ignore it blindly.
+     Log it. Consider createAnswer + setLocalDescription ONLY if encoder
+     still stalled after steps 1-2. Portal v2.2.14 ignores stable-state
+     answers today — prefer encoder kick without renegotiation first.
+
+  4. Last resort — **do NOT** `stopCapture()` / `startCapture()` mid-session on
+     ScreenCapturerAndroid. stopCapture() tears down MediaProjection and kills the
+     WebSocket session (Samsung S21 log: "Don't re-use the resultData...").
+
+     Instead replace the VideoTrack on the existing VideoSource:
+       localVideoTrack?.dispose()
+       localVideoTrack = factory.createVideoTrack(..., videoSource)
+       sender.setTrack(localVideoTrack, false)  // then true if still stalled
+
+  5. Log outbound-rtp framesEncoded before resize, after each kick attempt,
+     and at T+2s. Success = count increases at new resolution.
+
+
+STEP 4 — SEND LAYOUT EVENT  [PARTIALLY DONE — GATE TOO STRICT]
+---------------------------------------------------------------
+File: ScreenShareService.kt lines ~320-370
+
+Current bug: if framesEncoded check fails, function returns WITHOUT sending
+ORIENTATION_CHANGED and WITHOUT updating captureWidth/captureHeight for touch.
+
+Revised rules:
+
+  - Send ORIENTATION_CHANGED once FIRST FRAME at new size is confirmed
+  - Keep framesEncoded check as verification LOG, not a hard gate
+  - If encoder kick succeeds within 2s, great; if not, still send hint so
+    portal can prepare layout, but log encoder failure prominently
+  - ALWAYS update RemoteSessionManager.captureWidth/Height and touch bounds
+    when capture size changes, regardless of encoder stats
+
+Send on device WebSocket (NOT POST /api/v1/signaling):
+
+  {
+    "type": "device_event",
+    "uid": "<uid>",
+    "event": "ORIENTATION_CHANGED",
+    "payload": {
+      "width": 1200,
+      "height": 540,
+      "orientation": "landscape"
+    }
+  }
+
+Rules:
+
+  - width/height = CAPTURE size (half-scale), not raw display pixels
+  - Must match what encoder SHOULD send at new orientation
+  - Send AFTER first capture frame at new size (not before changeCaptureFormat)
+
+WRONG ENDPOINTS (still seen in production — 400 rejected):
+
+  POST /api/v1/signaling  ← SDP and ICE ONLY
+  Do not POST webrtc_ready or device_event there
+
+Correct alternatives:
+
+  WebSocket: { "type": "webrtc_ready" }  — session start ONLY
+  WebSocket: { "type": "device_event", ... }
+  POST /api/v1/event  — for persisted events like REMOTE_SESSION_STOPPED
+
+
+STEP 5 — RENEGOTIATION POLICY
+-----------------------------
+Portal v2.2.14 ignores a second SDP answer when signalingState is "stable".
+
+Preferred path: same track + changeCaptureFormat + encoder kick (Step 3).
+
+onRenegotiationNeeded is currently ignored (ScreenShareService.kt ~445-447).
+After rotation, LOG whether it fired. If encoder kick fails, investigate
+whether completing renegotiation (new answer) is needed — but do not depend
+on portal applying it without a portal-side change.
+
+
+STEP 6 — REFRESH TOUCH MAPPING  [BROKEN WHEN GATE FAILS]
+--------------------------------------------------------
+On every rotation, update control coordinate mapping even if encoder stalls:
+
+  RemoteSessionManager.captureWidth = captureW
+  RemoteSessionManager.captureHeight = captureH
+  RemoteSessionManager.displayWidth = displayW
+  RemoteSessionManager.displayHeight = displayH
+
+  x = x_percent * bounds.width()
+  y = y_percent * bounds.height()   // use HEIGHT for Y, never width
+
+Do this in the same handler.post block as ORIENTATION_CHANGED — do NOT tie
+it to framesEncoded success.
+
+
+STEP 7 — FIX HTTP SIGNALING MISUSE (SEPARATE BUG)
+-------------------------------------------------
+Production logs show failed POSTs:
+
+  Signaling POST rejected: {"type":"webrtc_ready"}  → 400
+  Signaling POST rejected: {"type":"device_event",...}  → 400
+
+webrtc_ready and device_event must go on the device WebSocket, not
+POST /api/v1/signaling.
+
+
+================================================================================
+PSEUDOCODE — ROTATION HANDLER (REVISED)
+================================================================================
+
+fun onDisplayRotated() {
+    if (!RemoteSessionManager.isSessionActive) return
+
+    val bounds = windowManager.currentWindowMetrics.bounds
+    val displayW = bounds.width()
+    val displayH = bounds.height()
+    val captureW = displayW / 2
+    val captureH = displayH / 2
+
+    if (captureW == lastCaptureW && captureH == lastCaptureH) return
+
+    serviceExecutor.execute {
+        log("Rotation: ${lastCaptureW}x${lastCaptureH} -> ${captureW}x${captureH}")
+
+        // 1. Resize existing capturer — same PeerConnection
+        videoCapturer?.changeCaptureFormat(captureW, captureH, 30)
+
+        // 2. Wait for first frame at new size (timeout ~2s)
+        val gotFrame = awaitCaptureFrame(captureW, captureH, timeoutMs = 2000)
+        if (!gotFrame) {
+            log.e("Rotation failed: no frames at ${captureW}x${captureH}")
+            return@execute
+        }
+        log("FIRST FRAME CAPTURED! ${captureW}x${captureH}")
+
+        // 3. Kick encoder — NEW (critical)
+        kickEncoderAfterResize()
+        val encoding = verifyOutboundRtpFramesIncreasing(timeoutMs = 2000)
+        if (!encoding) {
+            log.e("Rotation warning: framesEncoded not increasing after encoder kick")
+            // Do NOT return here — still notify portal and update touch mapping
+        }
+
+        // 4. Notify portal + touch mapping AFTER capture confirmed
+        handler.post {
+            sendDeviceEvent("ORIENTATION_CHANGED", payload = json {
+                "width" to captureW
+                "height" to captureH
+                "orientation" to if (captureW > captureH) "landscape" else "portrait"
+            })
+            captureWidth = captureW
+            captureHeight = captureH
+            RemoteSessionManager.captureWidth = captureW
+            RemoteSessionManager.captureHeight = captureH
+            RemoteSessionManager.displayWidth = displayW
+            RemoteSessionManager.displayHeight = displayH
+        }
+
+        lastCaptureW = captureW
+        lastCaptureH = captureH
+    }
+}
+
+fun kickEncoderAfterResize() {
+    localVideoTrack?.setEnabled(false)
+    localVideoTrack?.setEnabled(true)
+
+    peerConnection?.transceivers
+        ?.find { it.mediaType == MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO }
+        ?.sender?.setTrack(localVideoTrack, true)
+
+    // If still stalled after verifyOutboundRtpFramesIncreasing fails:
+    // videoCapturer?.stopCapture()
+    // videoCapturer?.startCapture(captureW, captureH, 30)
+}
+
+
+================================================================================
+ANTI-PATTERNS — DO NOT
+================================================================================
+
+  - Send WEBRTC_READY on rotation
+  - Stop MediaProjection on rotation
+  - Recreate PeerConnection on rotation
+  - Send ORIENTATION_CHANGED BEFORE changeCaptureFormat / first new frame
+  - Block ORIENTATION_CHANGED on framesEncoded alone (causes silent failure)
+  - Skip touch-mapping update when encoder check fails
+  - Send hint with display pixels (2400x1080) while capture stays 540x1200
+  - POST device events to /api/v1/signaling
+  - Block main thread during rotation (causes frame drops / ANR)
+  - Map touch Y using capture width instead of display height
+  - Ignore onRenegotiationNeeded without logging whether it fired on rotation
+
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+Portrait session streaming:
+
+  [ ] FIRST FRAME at 540x1200 (or your portrait capture size)
+  [ ] outbound-rtp framesEncoded increasing
+  [ ] ICE CONNECTED, signaling STABLE
+
+Rotate to landscape:
+
+  [x] changeCaptureFormat(1200, 540, 30) on existing capturer  (10:03 retest)
+  [x] FIRST FRAME CAPTURED! 1200x540 within ~1-2s  (10:03 retest)
+  [ ] outbound-rtp framesEncoded resumes climbing after encoder kick
+  [ ] ORIENTATION_CHANGED sent with width=1200, height=540
+  [ ] ORIENTATION_CHANGED visible in server logs (device_event)
+  [ ] Touch mapping updated to stream=1200x540 even if encoder slow
+  [ ] NO WEBRTC_READY, NO new answer, NO PC teardown
+  [ ] ICE stays CONNECTED
+  [ ] Main-thread "Skipped N frames" spike < ~30 during rotation
+
+Portal expected result:
+
+  [ ] Video fills landscape panel within 1-2 seconds
+  [ ] Landscape badge appears
+  [ ] Touch clicks correct after video resizes
+
+Rotate back to portrait — same checks reversed.
+
+
+================================================================================
+IF ENCODER STILL STALLED AFTER ENCODER KICK
+================================================================================
+
+Investigate in order:
+
+  1. Does onRenegotiationNeeded fire during/after changeCaptureFormat?
+  2. Is the same VideoTrack still attached to RtpSender after kick?
+  3. Does getStats() show outbound-rtp width/height updating to 1200x540?
+  4. Does stopCapture/startCapture on same VideoSource fix it?
+  5. Does VirtualDisplay inside ScreenCapturerAndroid need recreate?
+  6. Try videoSource.adaptOutputFormat() if available in your WebRTC build
+  7. Is LocationTrackingService / overlay work blocking rotation handler?
+  8. Log RtpSender parameters before and after resize
+
+
+================================================================================
+DEBUG OUTPUT TO CAPTURE FOR NEXT TEST
+================================================================================
+
+Please log and share:
+
+  - Exact ORIENTATION_CHANGED JSON sent (width/height values)
+  - FIRST FRAME CAPTURED lines before AND after each rotation
+  - outbound-rtp framesEncoded at T+0s, T+2s, T+5s after rotation
+  - Whether onRenegotiationNeeded fired during rotation
+  - Result of each encoder kick step (track toggle, setTrack, stop/start)
+  - Main-thread Choreographer "Skipped N frames" during rotation
+  - Server log line: "Device WS message: device_event event=ORIENTATION_CHANGED"
+
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+Admin rotates device during live session → portal video smoothly switches to
+landscape within 1-2 seconds, no black screen, touch mapping stays correct.
+
+Server logs should show:
+
+  Device WS message: device_event event=ORIENTATION_CHANGED
+
+with payload width/height matching capture size (e.g. 1200x540 landscape).
+
+NO additional WebRTC signaling (offer/answer/ICE) after rotation is correct
+and expected — ICE session stays up.
+
+Minimum bar for next retest:
+
+  1. framesEncoded increases after encoder kick
+  2. ORIENTATION_CHANGED appears in server logs
+  3. Portal video shows landscape content (not frozen portrait / black)

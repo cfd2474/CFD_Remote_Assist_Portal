@@ -36,8 +36,8 @@ interface WebRtcOptions {
   layoutRevision?: number;
 }
 
-const OFFER_DELAY_MS = 20_000;
-const CAPTURE_WARMUP_MS = 3_000;
+const OFFER_DELAY_MS = 500;
+const CAPTURE_WARMUP_MS = 200;
 const OFFER_RETRY_MS = 15_000;
 const MAX_OFFER_ATTEMPTS = 4;
 const NEGOTIATION_TIMEOUT_MS = 45_000;

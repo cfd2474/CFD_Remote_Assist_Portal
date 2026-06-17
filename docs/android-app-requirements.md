@@ -6,6 +6,7 @@ It is written to be handed directly to the app developer/agent. It contains exac
 
 Related docs:
 
+- [android-eud-app-build-handoff.md](android-eud-app-build-handoff.md) — **step-by-step guide to building the Android app from scratch** (reference impl v2.0.0)
 - [android-webrtc-requirements.md](android-webrtc-requirements.md) — condensed WebRTC quick reference
 - [android-device-api-port-handoff.md](android-device-api-port-handoff.md) — port 8448 cutover
 - [mdm-config.md](mdm-config.md) — EMM managed configuration keys
