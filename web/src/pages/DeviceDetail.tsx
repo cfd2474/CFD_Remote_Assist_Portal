@@ -632,7 +632,9 @@ export function DeviceDetail() {
                 placeholder="Device PIN"
                 value={unlockPin}
                 onChange={(event) => setUnlockPin(event.target.value)}
-                autoComplete="off"
+                autoComplete="one-time-code"
+                data-lpignore="true"
+                data-1pignore="true"
                 aria-label="Device PIN"
               />
               <button
