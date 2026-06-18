@@ -1,6 +1,6 @@
 # EUD Remote Assist Portal — Administrator Guide
 
-**Release 2.2.9**
+**Release 2.2.26**
 
 The Remote Assist Portal is the web console for managing your fleet of company-owned Android devices. From a single browser you can see where every device is, confirm it's online, push a ping or location request, and take live control of the screen for hands-on support.
 
@@ -46,11 +46,18 @@ The landing page shows every registered device. For each one you'll typically se
 
 Click any row to open the **Device detail** view.
 
+At the bottom of the page, there is an **Export Device List** link. Clicking this link opens a modal where you can customize the CSV export by checking or unchecking specific values (UID, Name, Model, Phone number, App version, Agency, Last location coordinate, Last location seen date/time). Tapping **Export** downloads a CSV file with the naming convention `EUD_export_<date/time>.csv`.
+
 ---
 
 ## 4. Device detail & actions
 
-The detail view is where you act on a single device. Available actions:
+The detail view is where you act on a single device. It displays device-specific telemetry and offers administrative action buttons.
+
+### Device Info Panel
+The device info list displays specific metadata elements. The **Device Name** is shown at the top of the data elements list, followed by other telemetry points such as the current location details, battery level, etc.
+
+### Available Actions:
 
 ### Ping
 Sends `TRIGGER_PING`. The device alerts so the user (or you, if it's nearby) can find it. The device replies with a `PING_ACKNOWLEDGED` event once the user responds.

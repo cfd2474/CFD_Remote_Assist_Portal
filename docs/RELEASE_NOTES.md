@@ -6,6 +6,89 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=2.2.26 -->
+## Version 2.2.26
+
+**Portal**
+
+- Fix APK version parsing fallback logic to correctly identify target application versions from Github repository assets.
+
+<!-- RELEASE_END version=2.2.26 -->
+
+<!-- RELEASE_START version=2.2.25 -->
+## Version 2.2.25
+
+**Portal**
+
+- Added **Export Device List** link at the bottom of the Devices page. Admins can select specific columns (UID, Name, Model, Phone number, App version, Agency, Last location coordinate, Last location seen date/time) to include in the exported CSV.
+- The exported CSV file is named `EUD_export_<date/time>.csv`.
+- Display the device name at the top of the data elements list in the individual device info panel.
+
+<!-- RELEASE_END version=2.2.25 -->
+
+<!-- RELEASE_START version=2.2.24 -->
+## Version 2.2.24
+
+**Portal**
+
+- Disabled browser autocomplete/autofill on the PIN input field in the remote unlock modal to prevent automated browser values from overriding or interfering with PIN entries.
+
+<!-- RELEASE_END version=2.2.24 -->
+
+<!-- RELEASE_START version=2.2.23 -->
+## Version 2.2.23
+
+**Portal**
+
+- Optimized remote unlock user experience (UX) flow and transitions.
+
+<!-- RELEASE_END version=2.2.23 -->
+
+<!-- RELEASE_START version=2.2.22 -->
+## Version 2.2.22
+
+**Portal**
+
+- Modified lock device modal wording and verification constraints to match the new operational specifications.
+
+<!-- RELEASE_END version=2.2.22 -->
+
+<!-- RELEASE_START version=2.2.21 -->
+## Version 2.2.21
+
+**Portal**
+
+- Implemented a WebRTC inactivity warning modal that automatically terminates active streaming sessions upon navigation, tab unload, or idle timeout.
+
+<!-- RELEASE_END version=2.2.21 -->
+
+<!-- RELEASE_START version=2.2.20 -->
+## Version 2.2.20
+
+**Portal**
+
+- Optimized WebRTC connection signaling handshake offer delay and video capture warmup delay on the device to minimize connection latency.
+
+<!-- RELEASE_END version=2.2.20 -->
+
+<!-- RELEASE_START version=2.2.19 -->
+## Version 2.2.19
+
+**Portal**
+
+- Fixed video panel size logic for device rotation state and added renegotiation guard rules.
+
+<!-- RELEASE_END version=2.2.19 -->
+
+<!-- RELEASE_START version=2.2.18 -->
+## Version 2.2.18
+
+**Portal**
+
+- Request inbound keyframes on every `ORIENTATION_CHANGED` layout event to ensure rapid recovery.
+
+<!-- RELEASE_END version=2.2.18 -->
+
 <!-- RELEASE_START version=2.2.17 -->
 ## Version 2.2.17
 
