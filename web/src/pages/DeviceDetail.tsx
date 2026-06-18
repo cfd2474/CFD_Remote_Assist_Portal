@@ -20,6 +20,50 @@ export function DeviceDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [fadeClass, setFadeClass] = useState("");
+  const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
+  const fadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const removeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBannerMessage = useCallback((message: string, isQueued: boolean = false, command: string | null = null) => {
+    if (fadeTimeoutRef.current) {
+      clearTimeout(fadeTimeoutRef.current);
+      fadeTimeoutRef.current = null;
+    }
+    if (removeTimeoutRef.current) {
+      clearTimeout(removeTimeoutRef.current);
+      removeTimeoutRef.current = null;
+    }
+    setFadeClass("");
+    setActionMessage(message);
+    
+    if (isQueued) {
+      setQueuedCommand(command);
+    } else {
+      setQueuedCommand(null);
+      fadeTimeoutRef.current = setTimeout(() => {
+        setFadeClass("fade-out");
+        removeTimeoutRef.current = setTimeout(() => {
+          setActionMessage(null);
+          setFadeClass("");
+        }, 500);
+      }, 3000);
+    }
+  }, []);
+
+  const clearBannerMessage = useCallback(() => {
+    if (fadeTimeoutRef.current) {
+      clearTimeout(fadeTimeoutRef.current);
+      fadeTimeoutRef.current = null;
+    }
+    if (removeTimeoutRef.current) {
+      clearTimeout(removeTimeoutRef.current);
+      removeTimeoutRef.current = null;
+    }
+    setFadeClass("");
+    setQueuedCommand(null);
+    setActionMessage(null);
+  }, []);
   const [remoteActive, setRemoteActive] = useState(false);
   const [remoteSessionId, setRemoteSessionId] = useState(0);
   const [webrtcReadySessionId, setWebrtcReadySessionId] = useState(0);
@@ -94,7 +138,7 @@ export function DeviceDetail() {
 
   const runCommand = useCallback(async (command: DeviceCommand) => {
     if (!auth.user || !uid) return;
-    setActionMessage(null);
+    clearBannerMessage();
     try {
       const result = await sendCommand(auth.user, uid, command);
       if (command === "START_REMOTE_ADMIN") {
@@ -109,16 +153,16 @@ export function DeviceDetail() {
         setDeviceLockedReason(null);
         setUnlockPin("");
       }
-      setActionMessage(
-        result.delivery === "queued"
-          ? `Command queued: ${command} — device is not on live WebSocket; it will receive this on the next poll (usually within ~30s). Remote assist requires a live WebSocket connection.`
-          : `Command sent: ${command}`
-      );
+      const isQueued = result.delivery === "queued";
+      const message = isQueued
+        ? `Command queued: ${command} — device is not on live WebSocket; it will receive this on the next poll (usually within ~30s). Remote assist requires a live WebSocket connection.`
+        : `Command sent: ${command}`;
+      showBannerMessage(message, isQueued, command);
       void refreshDeviceMeta();
     } catch (err) {
-      setActionMessage(err instanceof Error ? err.message : "Command failed");
+      showBannerMessage(err instanceof Error ? err.message : "Command failed");
     }
-  }, [auth.user, uid, refreshDeviceMeta]);
+  }, [auth.user, uid, refreshDeviceMeta, showBannerMessage, clearBannerMessage]);
 
   useEffect(() => {
     if (lastEvent?.event === "WEBRTC_READY") {
@@ -156,7 +200,7 @@ export function DeviceDetail() {
         setDeviceLocked(false);
         setDeviceLockedReason(null);
         setUnlockPin("");
-        setActionMessage("Unlock command processed — waiting for video stream…");
+        showBannerMessage("Unlock command processed — waiting for video stream…");
       }
     }
     if (lastEvent?.event === "COMMAND_FAILED") {
@@ -172,10 +216,22 @@ export function DeviceDetail() {
         }
         setUnlocking(false);
         setDeviceLockedReason("Incorrect pin/password. Try again.");
-        setActionMessage(`Unlock failed: ${error}`);
+        showBannerMessage(`Unlock failed: ${error}`);
       }
     }
-  }, [lastEvent]);
+  }, [lastEvent, showBannerMessage]);
+
+  useEffect(() => {
+    if (deviceOnline && queuedCommand) {
+      let transitionMessage = `Command sent: ${queuedCommand}`;
+      if (queuedCommand === "REMOTE_UNLOCK") {
+        transitionMessage = "Unlock command sent — device is entering the PIN…";
+      } else if (queuedCommand === "LOCK_DEVICE") {
+        transitionMessage = "Lock command sent. Remote assist has been stopped.";
+      }
+      showBannerMessage(transitionMessage, false, null);
+    }
+  }, [deviceOnline, queuedCommand, showBannerMessage]);
 
   useEffect(() => {
     if (remoteActive) {
@@ -235,6 +291,14 @@ export function DeviceDetail() {
       if (unlockTimeoutRef.current) {
         clearTimeout(unlockTimeoutRef.current);
         unlockTimeoutRef.current = null;
+      }
+      if (fadeTimeoutRef.current) {
+        clearTimeout(fadeTimeoutRef.current);
+        fadeTimeoutRef.current = null;
+      }
+      if (removeTimeoutRef.current) {
+        clearTimeout(removeTimeoutRef.current);
+        removeTimeoutRef.current = null;
       }
     };
   }, []);
@@ -339,26 +403,26 @@ export function DeviceDetail() {
     if (!auth.user || !uid || !unlockPin.trim()) return;
 
     setUnlocking(true);
-    setActionMessage(null);
+    clearBannerMessage();
     try {
       const result = await sendCommand(auth.user, uid, "REMOTE_UNLOCK", {
         pin: unlockPin.trim(),
       });
       if (result.delivery === "queued") {
-        setActionMessage("Unlock command queued — device will receive it on next poll.");
+        showBannerMessage("Unlock command queued — device will receive it on next poll.", true, "REMOTE_UNLOCK");
         setUnlocking(false);
       } else {
-        setActionMessage("Unlock command sent — device is entering the PIN…");
+        showBannerMessage("Unlock command sent — device is entering the PIN…");
         if (unlockTimeoutRef.current) {
           clearTimeout(unlockTimeoutRef.current);
         }
         unlockTimeoutRef.current = setTimeout(() => {
           setUnlocking(false);
-          setActionMessage("Unlock attempt timed out.");
+          showBannerMessage("Unlock attempt timed out.");
         }, 15000);
       }
     } catch (err) {
-      setActionMessage(err instanceof Error ? err.message : "Unlock failed");
+      showBannerMessage(err instanceof Error ? err.message : "Unlock failed");
       setUnlocking(false);
     }
   };
@@ -368,7 +432,7 @@ export function DeviceDetail() {
 
     setLockModalOpen(false);
     setLocking(true);
-    setActionMessage(null);
+    clearBannerMessage();
 
     try {
       if (remoteActive) {
@@ -377,14 +441,14 @@ export function DeviceDetail() {
       }
 
       const result = await sendCommand(auth.user, uid, "LOCK_DEVICE");
-      setActionMessage(
-        result.delivery === "queued"
-          ? "Lock command queued — device will lock on next poll. Remote assist has been stopped."
-          : "Lock command sent. Remote assist has been stopped."
-      );
+      const isQueued = result.delivery === "queued";
+      const message = isQueued
+        ? "Lock command queued — device will lock on next poll. Remote assist has been stopped."
+        : "Lock command sent. Remote assist has been stopped.";
+      showBannerMessage(message, isQueued, "LOCK_DEVICE");
       void refreshDeviceMeta();
     } catch (err) {
-      setActionMessage(err instanceof Error ? err.message : "Lock command failed");
+      showBannerMessage(err instanceof Error ? err.message : "Lock command failed");
     } finally {
       setLocking(false);
     }
@@ -395,12 +459,12 @@ export function DeviceDetail() {
 
     setRemoveModalOpen(false);
     setRemoving(true);
-    setActionMessage(null);
+    clearBannerMessage();
     try {
       await removeDevice(auth.user, uid);
       navigate("/", { replace: true });
     } catch (err) {
-      setActionMessage(err instanceof Error ? err.message : "Failed to remove device");
+      showBannerMessage(err instanceof Error ? err.message : "Failed to remove device");
       setRemoving(false);
     }
   };
@@ -449,7 +513,11 @@ export function DeviceDetail() {
         </div>
       </div>
 
-      {actionMessage && <p className="action-message">{actionMessage}</p>}
+      {actionMessage && (
+        <p className={`action-message ${fadeClass}`} role="status">
+          {actionMessage}
+        </p>
+      )}
 
       <section className="panel">
         <h2>Actions</h2>
