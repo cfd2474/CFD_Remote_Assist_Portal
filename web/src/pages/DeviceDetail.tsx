@@ -489,8 +489,7 @@ export function DeviceDetail() {
         onCancel={() => setLockModalOpen(false)}
       >
         <p>
-          This will terminate any active remote assist session. Remote assist
-          will not be available until the phone is unlocked manually.
+          Locking screen will power off the screen and initiate a screen lock if one is present.
         </p>
       </ConfirmModal>
 
