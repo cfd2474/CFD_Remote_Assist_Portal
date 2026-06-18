@@ -20,12 +20,16 @@ interface GitHubRelease {
 
 type SemverTriple = [number, number, number];
 
-function parseApkVersion(filename: string): SemverTriple | null {
-  const match = filename.match(/(\d+)\.(\d+)\.(\d+)\.apk$/i);
-  if (!match) {
-    return null;
+function parseApkVersion(filename: string, tagName: string): SemverTriple | null {
+  const fileMatch = filename.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (fileMatch) {
+    return [Number(fileMatch[1]), Number(fileMatch[2]), Number(fileMatch[3])];
   }
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
+  const tagMatch = tagName.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (tagMatch) {
+    return [Number(tagMatch[1]), Number(tagMatch[2]), Number(tagMatch[3])];
+  }
+  return null;
 }
 
 function formatVersion(version: SemverTriple): string {
@@ -74,7 +78,7 @@ export async function getLatestApkRelease(): Promise<LatestApkRelease | null> {
         continue;
       }
 
-      const version = parseApkVersion(asset.name);
+      const version = parseApkVersion(asset.name, release.tag_name);
       if (!version) {
         continue;
       }
