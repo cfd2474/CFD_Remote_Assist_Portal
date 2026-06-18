@@ -6,6 +6,7 @@ interface ConfirmModalProps {
   title: string;
   children: ReactNode;
   confirmLabel?: string;
+  cancelLabel?: string;
   confirmClassName?: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -16,6 +17,7 @@ export function ConfirmModal({
   title,
   children,
   confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   confirmClassName = "btn-primary",
   onConfirm,
   onCancel,
@@ -37,7 +39,7 @@ export function ConfirmModal({
         <div className="modal-body">{children}</div>
         <div className="modal-actions">
           <button type="button" onClick={onCancel}>
-            Cancel
+            {cancelLabel}
           </button>
           <button
             type="button"

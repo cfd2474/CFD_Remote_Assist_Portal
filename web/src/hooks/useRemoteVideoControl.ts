@@ -28,6 +28,7 @@ interface UseRemoteVideoControlOptions {
   keyboardEnabled: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   sendControlWs?: (packet: ControlPacket) => boolean;
+  onActivity?: () => void;
 }
 
 export function useRemoteVideoControl({
@@ -37,6 +38,7 @@ export function useRemoteVideoControl({
   keyboardEnabled,
   videoRef,
   sendControlWs,
+  onActivity,
 }: UseRemoteVideoControlOptions) {
   const panelRef = useRef<HTMLDivElement>(null);
   const activePointer = useRef<ActivePointer | null>(null);
@@ -45,8 +47,16 @@ export function useRemoteVideoControl({
   );
   const [pointerOverPanel, setPointerOverPanel] = useState(false);
 
+  const onActivityRef = useRef(onActivity);
+  onActivityRef.current = onActivity;
+
+  const triggerActivity = useCallback(() => {
+    onActivityRef.current?.();
+  }, []);
+
   const send = useCallback(
     async (packet: ControlPacket) => {
+      triggerActivity();
       const channelOpen = pointerEnabled || keyboardEnabled;
       if (!channelOpen) return;
 
@@ -64,7 +74,7 @@ export function useRemoteVideoControl({
         console.warn("Control send failed:", err);
       }
     },
-    [keyboardEnabled, pointerEnabled, sendControlWs, uid, user]
+    [keyboardEnabled, pointerEnabled, sendControlWs, uid, user, triggerActivity]
   );
 
   useEffect(() => {
@@ -147,6 +157,7 @@ export function useRemoteVideoControl({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      triggerActivity();
       if (!pointerEnabled) return;
       updateCursorPosition(e.clientX, e.clientY);
 
@@ -174,11 +185,12 @@ export function useRemoteVideoControl({
         threshold: moveThresholdPx(video),
       };
     },
-    [pointerEnabled, send, updateCursorPosition, videoRef]
+    [pointerEnabled, send, updateCursorPosition, videoRef, triggerActivity]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      triggerActivity();
       if (pointerOverPanel) {
         updateCursorPosition(e.clientX, e.clientY);
       }
@@ -199,15 +211,16 @@ export function useRemoteVideoControl({
         pointer.moved = true;
       }
     },
-    [pointerOverPanel, updateCursorPosition]
+    [pointerOverPanel, updateCursorPosition, triggerActivity]
   );
 
   const handlePointerEnter = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      triggerActivity();
       setPointerOverPanel(true);
       updateCursorPosition(e.clientX, e.clientY);
     },
-    [updateCursorPosition]
+    [updateCursorPosition, triggerActivity]
   );
 
   const handlePointerLeave = useCallback(() => {
@@ -247,6 +260,7 @@ export function useRemoteVideoControl({
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      triggerActivity();
       if (!pointerEnabled) return;
       e.preventDefault();
       const video = videoRef.current;
@@ -254,7 +268,7 @@ export function useRemoteVideoControl({
       const point = pointOnVideo(video, e.clientX, e.clientY);
       void send({ action: "LONG_PRESS", ...point, ...streamMeta(video) });
     },
-    [pointerEnabled, send, videoRef]
+    [pointerEnabled, send, videoRef, triggerActivity]
   );
 
   return {

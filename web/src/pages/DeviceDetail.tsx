@@ -44,6 +44,22 @@ export function DeviceDetail() {
   const [latestApkVersion, setLatestApkVersion] = useState<string | null>(null);
   const initialLoadDone = useRef(false);
 
+  const [showInactivityModal, setShowInactivityModal] = useState(false);
+  const [countdown, setCountdown] = useState(120);
+  const lastActivityRef = useRef<number>(Date.now());
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const authUserRef = useRef(auth.user);
+  const uidRef = useRef(uid);
+  const remoteActiveRef = useRef(remoteActive);
+
+  // Sync refs with state/props
+  useEffect(() => {
+    authUserRef.current = auth.user;
+    uidRef.current = uid;
+    remoteActiveRef.current = remoteActive;
+  }, [auth.user, uid, remoteActive]);
+
   const { connected, deviceOnline, deviceReconnecting, lastEvent, signalingStatus, sendWebRtc, sendControl, setWebRtcHandler } =
     useAdminWebSocket(uid, auth.user ?? null);
 
@@ -74,6 +90,34 @@ export function DeviceDetail() {
       // Keep existing device card data if a background refresh fails.
     }
   }, [auth.user, uid]);
+
+  const runCommand = useCallback(async (command: DeviceCommand) => {
+    if (!auth.user || !uid) return;
+    setActionMessage(null);
+    try {
+      const result = await sendCommand(auth.user, uid, command);
+      if (command === "START_REMOTE_ADMIN") {
+        setRemoteActive(true);
+        remoteSessionIdRef.current += 1;
+        setRemoteSessionId(remoteSessionIdRef.current);
+        setWebrtcReadySessionId(0);
+      }
+      if (command === "STOP_REMOTE_ADMIN") {
+        setRemoteActive(false);
+        setDeviceLocked(false);
+        setDeviceLockedReason(null);
+        setUnlockPin("");
+      }
+      setActionMessage(
+        result.delivery === "queued"
+          ? `Command queued: ${command} — device is not on live WebSocket; it will receive this on the next poll (usually within ~30s). Remote assist requires a live WebSocket connection.`
+          : `Command sent: ${command}`
+      );
+      void refreshDeviceMeta();
+    } catch (err) {
+      setActionMessage(err instanceof Error ? err.message : "Command failed");
+    }
+  }, [auth.user, uid, refreshDeviceMeta]);
 
   useEffect(() => {
     if (lastEvent?.event === "WEBRTC_READY") {
@@ -122,13 +166,17 @@ export function DeviceDetail() {
   }, [lastEvent]);
 
   useEffect(() => {
-    if (!remoteActive) {
+    if (remoteActive) {
+      lastActivityRef.current = Date.now();
+      setShowInactivityModal(false);
+    } else {
       setStreamLayoutHint(null);
       setStreamLayoutRevision(0);
       setDeviceOrientation(null);
       setDeviceLocked(false);
       setDeviceLockedReason(null);
       setUnlockPin("");
+      setShowInactivityModal(false);
     }
   }, [remoteActive]);
 
@@ -137,6 +185,110 @@ export function DeviceDetail() {
     const interval = setInterval(() => void loadDevice(), 10000);
     return () => clearInterval(interval);
   }, [loadDevice]);
+
+  // Tab-close/refresh beforeunload handler
+  useEffect(() => {
+    if (!remoteActive || !uid || !auth.user) return;
+
+    const handleBeforeUnload = () => {
+      const url = `${import.meta.env.VITE_API_BASE ?? ""}/api/admin/devices/${uid}/command`;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (auth.user?.access_token) {
+        headers.Authorization = `Bearer ${auth.user.access_token}`;
+      }
+      void fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ command: "STOP_REMOTE_ADMIN" }),
+        keepalive: true,
+      });
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [remoteActive, uid, auth.user]);
+
+  // SPA navigation unmount handler
+  useEffect(() => {
+    return () => {
+      if (remoteActiveRef.current && authUserRef.current && uidRef.current) {
+        void sendCommand(authUserRef.current, uidRef.current, "STOP_REMOTE_ADMIN").catch((err) => {
+          console.warn("Failed to stop remote admin on navigation:", err);
+        });
+      }
+    };
+  }, []);
+
+  // Inactivity detection check
+  useEffect(() => {
+    if (!remoteActive) {
+      return;
+    }
+
+    const checkInterval = setInterval(() => {
+      if (!showInactivityModal) {
+        if (Date.now() - lastActivityRef.current >= 300_000) {
+          setShowInactivityModal(true);
+          setCountdown(120);
+        }
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(checkInterval);
+    };
+  }, [remoteActive, showInactivityModal]);
+
+  // Countdown timer decrement
+  useEffect(() => {
+    if (!showInactivityModal) {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      return;
+    }
+
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setShowInactivityModal(false);
+          void runCommand("STOP_REMOTE_ADMIN");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+  }, [showInactivityModal, runCommand]);
+
+  const handleActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
+
+  const handleKeepActive = useCallback(() => {
+    setShowInactivityModal(false);
+    lastActivityRef.current = Date.now();
+  }, []);
+
+  const handleTerminateSession = useCallback(() => {
+    setShowInactivityModal(false);
+    void runCommand("STOP_REMOTE_ADMIN");
+  }, [runCommand]);
 
   useEffect(() => {
     if (!auth.user) {
@@ -165,33 +317,7 @@ export function DeviceDetail() {
     };
   }, [auth.user]);
 
-  const runCommand = async (command: DeviceCommand) => {
-    if (!auth.user || !uid) return;
-    setActionMessage(null);
-    try {
-      const result = await sendCommand(auth.user, uid, command);
-      if (command === "START_REMOTE_ADMIN") {
-        setRemoteActive(true);
-        remoteSessionIdRef.current += 1;
-        setRemoteSessionId(remoteSessionIdRef.current);
-        setWebrtcReadySessionId(0);
-      }
-      if (command === "STOP_REMOTE_ADMIN") {
-        setRemoteActive(false);
-        setDeviceLocked(false);
-        setDeviceLockedReason(null);
-        setUnlockPin("");
-      }
-      setActionMessage(
-        result.delivery === "queued"
-          ? `Command queued: ${command} — device is not on live WebSocket; it will receive this on the next poll (usually within ~30s). Remote assist requires a live WebSocket connection.`
-          : `Command sent: ${command}`
-      );
-      void refreshDeviceMeta();
-    } catch (err) {
-      setActionMessage(err instanceof Error ? err.message : "Command failed");
-    }
-  };
+
 
   const handleRemoteUnlock = async () => {
     if (!auth.user || !uid || !unlockPin.trim()) return;
@@ -369,6 +495,19 @@ export function DeviceDetail() {
       </ConfirmModal>
 
       <ConfirmModal
+        open={showInactivityModal}
+        title="Stay connected?"
+        confirmLabel="Yes"
+        cancelLabel="No"
+        onConfirm={handleKeepActive}
+        onCancel={handleTerminateSession}
+      >
+        <p>
+          You have been inactive for 5 minutes. The remote assist session will disconnect in {countdown} seconds unless you choose to stay connected.
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
         open={removeModalOpen}
         title="Remove device?"
         confirmLabel="Remove Device & Clear Data"
@@ -500,6 +639,7 @@ export function DeviceDetail() {
           streamLayoutHint={streamLayoutHint}
           streamLayoutRevision={streamLayoutRevision}
           deviceOrientation={deviceOrientation}
+          onActivity={handleActivity}
         />
       </section>
 

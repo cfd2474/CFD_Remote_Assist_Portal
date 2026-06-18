@@ -22,6 +22,7 @@ interface RemoteViewerProps {
   streamLayoutHint?: StreamDimensions | null;
   streamLayoutRevision?: number;
   deviceOrientation?: StreamOrientation | null;
+  onActivity?: () => void;
 }
 
 function statusLabel(
@@ -56,6 +57,7 @@ export function RemoteViewer({
   streamLayoutHint = null,
   streamLayoutRevision = 0,
   deviceOrientation = null,
+  onActivity,
 }: RemoteViewerProps) {
   const { videoRef, streamActive, status, error, startSession } = useWebRtcViewer({
     sendSignaling: sendWebRtc,
@@ -88,6 +90,7 @@ export function RemoteViewer({
     keyboardEnabled: active && adminWsConnected,
     videoRef,
     sendControlWs: sendControl,
+    onActivity,
   });
 
   const { landscape, aspectRatio } = useVideoStreamLayout(
