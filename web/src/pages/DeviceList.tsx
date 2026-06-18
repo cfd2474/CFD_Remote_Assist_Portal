@@ -37,6 +37,18 @@ export function DeviceList() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFields, setExportFields] = useState({
+    uid: true,
+    device_name: true,
+    model_display: true,
+    phone_number: true,
+    app_version: true,
+    agency: true,
+    last_location: true,
+    last_telemetry_at: true,
+  });
+
   useEffect(() => {
     if (!auth.user) return;
 
@@ -185,6 +197,68 @@ export function DeviceList() {
     }
     setSortKey(key);
     setSortDir("asc");
+  };
+
+  const escapeCSV = (val: string | number | null | undefined): string => {
+    if (val == null) return "";
+    const str = String(val);
+    if (/[",\n\r]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const handleExport = () => {
+    const headers: string[] = [];
+    if (exportFields.uid) headers.push("UID");
+    if (exportFields.device_name) headers.push("Name");
+    if (exportFields.model_display) headers.push("Model");
+    if (exportFields.phone_number) headers.push("Phone number");
+    if (exportFields.app_version) headers.push("App version");
+    if (exportFields.agency) headers.push("Agency");
+    if (exportFields.last_location) {
+      headers.push("Latitude");
+      headers.push("Longitude");
+    }
+    if (exportFields.last_telemetry_at) headers.push("Last location seen date/time");
+
+    const rows = devices.map((device) => {
+      const row: string[] = [];
+      if (exportFields.uid) row.push(escapeCSV(device.uid));
+      if (exportFields.device_name) row.push(escapeCSV(device.device_name));
+      if (exportFields.model_display) row.push(escapeCSV(device.model_display));
+      if (exportFields.phone_number) row.push(escapeCSV(device.phone_number));
+      if (exportFields.app_version) row.push(escapeCSV(device.app_version));
+      if (exportFields.agency) row.push(escapeCSV(device.agency));
+      if (exportFields.last_location) {
+        row.push(escapeCSV(device.last_lat));
+        row.push(escapeCSV(device.last_lon));
+      }
+      if (exportFields.last_telemetry_at) {
+        row.push(
+          escapeCSV(
+            device.last_telemetry_at
+              ? new Date(device.last_telemetry_at).toLocaleString()
+              : ""
+          )
+        );
+      }
+      return row.join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const now = new Date();
+    const formattedDate = now.toISOString().replace(/[:.]/g, "-");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `EUD_export_${formattedDate}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExportModalOpen(false);
   };
 
   const hasActiveFilters = nameFilter.trim().length > 0 || agencyFilter.trim().length > 0;
@@ -349,6 +423,16 @@ export function DeviceList() {
             </button>
           </section>
 
+          <div className="device-list-actions" style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => setExportModalOpen(true)}
+            >
+              Export Device List
+            </button>
+          </div>
+
           <ConfirmModal
             open={removeModalOpen}
             title={
@@ -380,6 +464,91 @@ export function DeviceList() {
                 ))}
               </ul>
             ) : null}
+          </ConfirmModal>
+
+          <ConfirmModal
+            open={exportModalOpen}
+            title="Export Device List"
+            confirmLabel="Export CSV"
+            confirmClassName="btn-primary"
+            onConfirm={handleExport}
+            onCancel={() => setExportModalOpen(false)}
+          >
+            <p>Select the fields you would like to include in the exported CSV:</p>
+            <div className="export-options-grid">
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.uid}
+                  onChange={(e) => setExportFields({ ...exportFields, uid: e.target.checked })}
+                />
+                UID
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.device_name}
+                  onChange={(e) => setExportFields({ ...exportFields, device_name: e.target.checked })}
+                />
+                Name
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.model_display}
+                  onChange={(e) => setExportFields({ ...exportFields, model_display: e.target.checked })}
+                />
+                Model
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.phone_number}
+                  onChange={(e) => setExportFields({ ...exportFields, phone_number: e.target.checked })}
+                />
+                Phone number
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.app_version}
+                  onChange={(e) => setExportFields({ ...exportFields, app_version: e.target.checked })}
+                />
+                App version
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.agency}
+                  onChange={(e) => setExportFields({ ...exportFields, agency: e.target.checked })}
+                />
+                Agency
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.last_location}
+                  onChange={(e) => setExportFields({ ...exportFields, last_location: e.target.checked })}
+                />
+                Last location (coordinate)
+              </label>
+              <label className="export-option-label">
+                <input
+                  type="checkbox"
+                  className="device-list-checkbox"
+                  checked={exportFields.last_telemetry_at}
+                  onChange={(e) => setExportFields({ ...exportFields, last_telemetry_at: e.target.checked })}
+                />
+                Last location seen date/time
+              </label>
+            </div>
           </ConfirmModal>
         </>
       )}

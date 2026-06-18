@@ -549,6 +549,10 @@ export function DeviceDetail() {
           <h2>Device info</h2>
           <dl className="info-list">
             <div>
+              <dt>Device name</dt>
+              <dd>{device.device_name}</dd>
+            </div>
+            <div>
               <dt>UID</dt>
               <dd>{device.uid}</dd>
             </div>
