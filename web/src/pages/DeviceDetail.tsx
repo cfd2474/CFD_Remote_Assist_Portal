@@ -43,6 +43,7 @@ export function DeviceDetail() {
   );
   const [latestApkVersion, setLatestApkVersion] = useState<string | null>(null);
   const initialLoadDone = useRef(false);
+  const unlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showInactivityModal, setShowInactivityModal] = useState(false);
   const [countdown, setCountdown] = useState(120);
@@ -147,6 +148,11 @@ export function DeviceDetail() {
       const handledCommand =
         typeof payload?.command === "string" ? payload.command : null;
       if (handledCommand === "REMOTE_UNLOCK") {
+        if (unlockTimeoutRef.current) {
+          clearTimeout(unlockTimeoutRef.current);
+          unlockTimeoutRef.current = null;
+        }
+        setUnlocking(false);
         setDeviceLocked(false);
         setDeviceLockedReason(null);
         setUnlockPin("");
@@ -160,6 +166,12 @@ export function DeviceDetail() {
       const error =
         typeof payload?.error === "string" ? payload.error : "Command failed";
       if (failedCommand === "REMOTE_UNLOCK") {
+        if (unlockTimeoutRef.current) {
+          clearTimeout(unlockTimeoutRef.current);
+          unlockTimeoutRef.current = null;
+        }
+        setUnlocking(false);
+        setDeviceLockedReason("Incorrect pin/password. Try again.");
         setActionMessage(`Unlock failed: ${error}`);
       }
     }
@@ -219,6 +231,10 @@ export function DeviceDetail() {
         void sendCommand(authUserRef.current, uidRef.current, "STOP_REMOTE_ADMIN").catch((err) => {
           console.warn("Failed to stop remote admin on navigation:", err);
         });
+      }
+      if (unlockTimeoutRef.current) {
+        clearTimeout(unlockTimeoutRef.current);
+        unlockTimeoutRef.current = null;
       }
     };
   }, []);
@@ -328,14 +344,21 @@ export function DeviceDetail() {
       const result = await sendCommand(auth.user, uid, "REMOTE_UNLOCK", {
         pin: unlockPin.trim(),
       });
-      setActionMessage(
-        result.delivery === "queued"
-          ? "Unlock command queued — device will receive it on next poll."
-          : "Unlock command sent — device is entering the PIN…"
-      );
+      if (result.delivery === "queued") {
+        setActionMessage("Unlock command queued — device will receive it on next poll.");
+        setUnlocking(false);
+      } else {
+        setActionMessage("Unlock command sent — device is entering the PIN…");
+        if (unlockTimeoutRef.current) {
+          clearTimeout(unlockTimeoutRef.current);
+        }
+        unlockTimeoutRef.current = setTimeout(() => {
+          setUnlocking(false);
+          setActionMessage("Unlock attempt timed out.");
+        }, 15000);
+      }
     } catch (err) {
       setActionMessage(err instanceof Error ? err.message : "Unlock failed");
-    } finally {
       setUnlocking(false);
     }
   };
@@ -618,7 +641,7 @@ export function DeviceDetail() {
                 disabled={unlocking || !unlockPin.trim()}
                 onClick={() => void handleRemoteUnlock()}
               >
-                {unlocking ? "Unlocking…" : "Unlock"}
+                {unlocking ? "Standby, unlocking" : "Unlock"}
               </button>
             </div>
           </div>
