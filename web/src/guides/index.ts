@@ -31,10 +31,15 @@ export function getDocumentationGuide(
   return documentationGuides.find((guide) => guide.slug === slug);
 }
 
-const guideFilenameBySlug: Record<string, string> = {
+export const guideFilenameBySlug: Record<string, string> = {
   "portal-admin": "eud-remote-assist-portal-admin-guide.md",
   "app-deployment": "eud-remote-assist-app-deployment-guide.md",
 };
+
+export function getGuideFilename(slug: string | undefined): string | undefined {
+  if (!slug) return undefined;
+  return guideFilenameBySlug[slug];
+}
 
 const slugByGuideFilename = Object.fromEntries(
   Object.entries(guideFilenameBySlug).map(([slug, filename]) => [filename, slug])
