@@ -74,7 +74,13 @@ export function Enrollment() {
     });
 
     return (
-      <div className="card" style={{ marginTop: "1rem" }}>
+      <div className="card" style={{ marginTop: "1rem", position: "relative" }}>
+        <button 
+          onClick={() => setSelectedToken(null)}
+          style={{ position: "absolute", top: "1rem", right: "1rem", cursor: "pointer" }}
+        >
+          Dismiss
+        </button>
         <h3>Scan QR Code to Enroll Device</h3>
         <p style={{ marginBottom: "1rem" }}>
           Use the BYOD scanner in the EUD Remote Assist app to scan this code.
