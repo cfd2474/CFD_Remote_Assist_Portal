@@ -177,3 +177,33 @@ export async function clearPortalGithubToken(
     { method: "DELETE" }
   );
 }
+
+export interface EnrollmentToken {
+  token: string;
+  agency: string | null;
+  description: string | null;
+  tls_pin_hash: string | null;
+  created_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+}
+
+export async function fetchEnrollmentTokens(user: User): Promise<EnrollmentToken[]> {
+  const data = await apiFetch<{ tokens: EnrollmentToken[] }>("/api/admin/enrollment-tokens", user);
+  return data.tokens;
+}
+
+export async function createEnrollmentToken(
+  user: User,
+  params: { agency?: string; description?: string; tls_pin_hash?: string }
+): Promise<EnrollmentToken> {
+  const data = await apiFetch<{ token: EnrollmentToken }>("/api/admin/enrollment-tokens", user, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+  return data.token;
+}
+
+export async function revokeEnrollmentToken(user: User, token: string): Promise<void> {
+  await apiFetch(`/api/admin/enrollment-tokens/${token}`, user, { method: "DELETE" });
+}

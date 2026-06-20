@@ -1,17 +1,10 @@
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
-
-interface EnrollmentToken {
-  token: string;
-  agency: string | null;
-  description: string | null;
-  tls_pin_hash: string | null;
-  created_at: string;
-  expires_at: string | null;
-  is_active: boolean;
-}
+import { useAuth } from "react-oidc-context";
+import { fetchEnrollmentTokens, createEnrollmentToken, revokeEnrollmentToken, type EnrollmentToken } from "../api/client";
 
 export function Enrollment() {
+  const auth = useAuth();
   const [tokens, setTokens] = useState<EnrollmentToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,18 +16,19 @@ export function Enrollment() {
   const [selectedToken, setSelectedToken] = useState<EnrollmentToken | null>(null);
 
   useEffect(() => {
-    fetchTokens();
-  }, []);
+    if (auth.user) {
+      loadTokens();
+    }
+  }, [auth.user]);
 
-  async function fetchTokens() {
+  async function loadTokens() {
+    if (!auth.user) return;
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/enrollment-tokens");
-      if (!res.ok) throw new Error("Failed to load tokens");
-      const data = await res.json();
-      setTokens(data.tokens);
+      const data = await fetchEnrollmentTokens(auth.user);
+      setTokens(data);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to load tokens");
     } finally {
       setLoading(false);
     }
@@ -42,39 +36,33 @@ export function Enrollment() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (!auth.user) return;
     try {
-      const res = await fetch("/api/admin/enrollment-tokens", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agency: agency || null,
-          description: description || null,
-          tls_pin_hash: tlsPinHash || null,
-        }),
+      await createEnrollmentToken(auth.user, {
+        agency: agency || undefined,
+        description: description || undefined,
+        tls_pin_hash: tlsPinHash || undefined,
       });
-      if (!res.ok) throw new Error("Failed to create token");
       setAgency("");
       setDescription("");
       setTlsPinHash("");
-      fetchTokens();
+      loadTokens();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to create token");
     }
   }
 
   async function handleRevoke(token: string) {
+    if (!auth.user) return;
     if (!confirm("Are you sure you want to revoke this token?")) return;
     try {
-      const res = await fetch(`/api/admin/enrollment-tokens/${token}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to revoke token");
-      fetchTokens();
+      await revokeEnrollmentToken(auth.user, token);
+      loadTokens();
       if (selectedToken?.token === token) {
         setSelectedToken(null);
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to revoke token");
     }
   }
 
