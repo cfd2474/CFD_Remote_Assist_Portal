@@ -35,7 +35,33 @@ export async function requireAdmin(
       issuer: config.oidc.issuer,
       ...(config.oidc.audience ? { audience: config.oidc.audience } : {}),
     });
-    req.adminUser = payload as AdminUser;
+    
+    const adminUser = payload as AdminUser;
+    
+    // Authorization check
+    let authorized = false;
+    
+    // Check Email
+    if (config.oidc.adminEmails && adminUser.email) {
+      if (config.oidc.adminEmails.includes(adminUser.email.toLowerCase())) {
+        authorized = true;
+      }
+    }
+    
+    // Check Groups
+    if (!authorized && config.oidc.adminGroup) {
+      const groups = (payload.groups as string[]) || [];
+      if (groups.includes(config.oidc.adminGroup)) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      res.status(403).json({ error: "Forbidden: Account is not authorized as an admin" });
+      return;
+    }
+
+    req.adminUser = adminUser;
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });

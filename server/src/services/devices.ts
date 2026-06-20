@@ -19,7 +19,8 @@ function generateConnectionSecret(): string {
 }
 
 export async function registerDevice(
-  data: DeviceRegistration
+  data: DeviceRegistration,
+  providedSecret?: string
 ): Promise<{ device: DeviceRow; connection_secret: string; is_new: boolean }> {
   if (!data.enrollment_token) {
     throw new Error("Missing enrollment_token");
@@ -40,6 +41,18 @@ export async function registerDevice(
   );
 
   if (existing.rows.length > 0) {
+    const existingDevice = existing.rows[0];
+    
+    // Proof of Possession
+    if (!providedSecret) {
+      throw new Error("Missing x-connection-secret header for existing device re-registration. Wiped devices must be deleted from the portal before re-enrolling.");
+    }
+    
+    const validSecret = await bcrypt.compare(providedSecret, existingDevice.connection_secret);
+    if (!validSecret) {
+      throw new Error("Invalid connection secret provided for existing device re-registration.");
+    }
+
     const connection_secret = generateConnectionSecret();
     const hashedSecret = await bcrypt.hash(connection_secret, 10);
 

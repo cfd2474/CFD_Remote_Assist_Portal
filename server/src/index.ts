@@ -20,7 +20,10 @@ const app = express();
 app.set("etag", false);
 app.set("trust proxy", 1);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ 
+  contentSecurityPolicy: false,
+  hsts: { maxAge: 31536000, includeSubDomains: true }
+}));
 app.use((_req, res, next) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.set("Pragma", "no-cache");

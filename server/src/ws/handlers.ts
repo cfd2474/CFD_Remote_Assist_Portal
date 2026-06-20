@@ -50,12 +50,37 @@ async function verifyAdminToken(token: string): Promise<boolean> {
   try {
     const { createRemoteJWKSet, jwtVerify } = await import("jose");
     const jwks = createRemoteJWKSet(new URL(config.oidc.jwksUri));
-    await jwtVerify(token, jwks, {
+    const { payload } = await jwtVerify(token, jwks, {
       issuer: config.oidc.issuer,
       ...(config.oidc.audience ? { audience: config.oidc.audience } : {}),
     });
+
+    const adminUser = payload as any;
+    let authorized = false;
+    
+    // Check Email
+    if (config.oidc.adminEmails && adminUser.email) {
+      if (config.oidc.adminEmails.includes(adminUser.email.toLowerCase())) {
+        authorized = true;
+      }
+    }
+    
+    // Check Groups
+    if (!authorized && config.oidc.adminGroup) {
+      const groups = (payload.groups as string[]) || [];
+      if (groups.includes(config.oidc.adminGroup)) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      console.warn(`WebSocket admin token rejected: Account is not authorized (email=${adminUser.email})`);
+      return false;
+    }
+
     return true;
-  } catch {
+  } catch (err) {
+    console.error("Admin WebSocket token verification failed:", err);
     return false;
   }
 }

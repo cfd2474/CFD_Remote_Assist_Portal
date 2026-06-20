@@ -16,6 +16,10 @@ export const config = {
     jwksUri:
       process.env.OIDC_JWKS_URI ??
       `${requireEnv("OIDC_ISSUER").replace(/\/$/, "")}/.well-known/jwks`,
+    adminGroup: process.env.OIDC_ADMIN_GROUP || undefined,
+    adminEmails: process.env.OIDC_ADMIN_EMAILS
+      ? process.env.OIDC_ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase())
+      : undefined,
   },
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   commandSecretHeader: "x-connection-secret",

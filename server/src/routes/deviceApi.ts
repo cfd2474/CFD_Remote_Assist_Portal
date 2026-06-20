@@ -101,8 +101,9 @@ deviceApiRouter.post("/register", async (req, res) => {
   }
 
   try {
+    const providedSecret = req.headers["x-connection-secret"] as string | undefined;
     console.log(`Device registration: uid=${body.uid} name=${body.device_name}`);
-    const result = await registerDevice(body);
+    const result = await registerDevice(body, providedSecret);
     res.status(result.is_new ? 201 : 200).json({
       uid: result.device.uid,
       connection_secret: result.connection_secret,
@@ -202,10 +203,9 @@ deviceApiRouter.get("/commands", requireDeviceSecret, async (req, res) => {
 deviceApiRouter.get("/signaling", requireDeviceSecret, async (req, res) => {
   try {
     const uid = req.device!.uid;
-    const connectionSecret = req.device!.connection_secret;
     await touchLastSeen(uid);
     const messages = drainPendingToDevice(uid).map((message) =>
-      toWebRtcPayload(message, connectionSecret)
+      toWebRtcPayload(message)
     );
     res.json({
       messages,

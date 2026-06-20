@@ -213,8 +213,7 @@ export class ConnectionHub {
       });
 
       if (wsDelivered) {
-        const deviceSecret = this.deviceSecrets.get(uid);
-        const devicePayload = toWebRtcPayload(normalized, deviceSecret);
+        const devicePayload = toWebRtcPayload(normalized);
         deviceWs!.send(JSON.stringify(devicePayload));
         console.log(`WebRTC relay admin→device uid=${uid} kind=${kind}`);
       } else {

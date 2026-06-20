@@ -12,6 +12,7 @@ export function Enrollment() {
 
   const [agency, setAgency] = useState("");
   const [description, setDescription] = useState("");
+  const [tlsPinHash, setTlsPinHash] = useState("");
 
   const [selectedToken, setSelectedToken] = useState<EnrollmentToken | null>(null);
 
@@ -49,9 +50,11 @@ export function Enrollment() {
       await createEnrollmentToken(auth.user, {
         agency: agency || undefined,
         description: description || undefined,
+        tls_pin_hash: tlsPinHash || undefined,
       });
       setAgency("");
       setDescription("");
+      setTlsPinHash("");
       loadTokens();
     } catch (err: any) {
       setError(err.message || "Failed to create token");
@@ -136,6 +139,19 @@ export function Enrollment() {
               placeholder="e.g. DHS"
               style={{ width: "100%", padding: "0.5rem" }}
             />
+          </div>
+          <div>
+            <label>TLS Pin Hash (Optional)</label>
+            <input
+              type="text"
+              value={tlsPinHash}
+              onChange={(e) => setTlsPinHash(e.target.value)}
+              placeholder="e.g. sha256/..."
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+            <small style={{ color: "#888", display: "block", marginTop: "0.25rem" }}>
+              Leave blank if using MDM or if you trust the OS Certificate Authority.
+            </small>
           </div>
 
           <button type="submit">Generate Token</button>

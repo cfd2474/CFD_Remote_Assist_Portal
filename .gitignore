@@ -11,3 +11,4 @@ nginx/certs/*.pem
 !nginx/certs/.gitkeep
 docs/dev-server-credentials.md
 docker-compose.override.yml
+*.apk
