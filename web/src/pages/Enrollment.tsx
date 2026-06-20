@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "react-oidc-context";
-import { fetchEnrollmentTokens, createEnrollmentToken, revokeEnrollmentToken, type EnrollmentToken } from "../api/client";
+import { fetchEnrollmentTokens, createEnrollmentToken, revokeEnrollmentToken, fetchPortalConfig, type EnrollmentToken } from "../api/client";
 
 export function Enrollment() {
   const auth = useAuth();
   const [tokens, setTokens] = useState<EnrollmentToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [serverPort, setServerPort] = useState<number>(8448);
 
   const [agency, setAgency] = useState("");
   const [description, setDescription] = useState("");
@@ -27,6 +28,14 @@ export function Enrollment() {
       setLoading(true);
       const data = await fetchEnrollmentTokens(auth.user);
       setTokens(data);
+      try {
+        const config = await fetchPortalConfig(auth.user);
+        if (config && config.serverPort) {
+          setServerPort(config.serverPort);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch portal config for server port:", e);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load tokens");
     } finally {
@@ -67,10 +76,11 @@ export function Enrollment() {
   }
 
   function renderQrCode(t: EnrollmentToken) {
+    const trackingUrl = `${window.location.protocol}//${window.location.hostname}:${serverPort}`;
     const payload = JSON.stringify({
       enrollment_token: t.token,
       tls_pin_hash: t.tls_pin_hash || undefined,
-      tracking_server_url: window.location.origin
+      tracking_server_url: trackingUrl
     });
 
     return (
@@ -94,7 +104,7 @@ export function Enrollment() {
             {`{
   "enrollment_token": "${t.token}",
   "tls_pin_hash": "${t.tls_pin_hash || ""}",
-  "tracking_server_url": "${window.location.origin}"
+  "tracking_server_url": "${trackingUrl}"
 }`}
           </pre>
         </div>

@@ -10,9 +10,11 @@ const SETTINGS_PATH =
 
 type PortalSettingsFile = {
   githubToken?: string;
+  serverPort?: number;
 };
 
 let portalGithubToken: string | undefined;
+let portalServerPort: number | undefined;
 
 function envGithubToken(): string | undefined {
   return config.github.token;
@@ -26,18 +28,22 @@ export function getEffectiveGithubToken(): string | undefined {
   return envGithubToken() ?? portalGithubToken;
 }
 
-export type GithubTokenStatus = {
+export type PortalConfigStatus = {
   apkRepo: string;
   tokenConfigured: boolean;
   tokenSource: "environment" | "portal" | null;
+  serverPort: number;
 };
 
-export function getGithubTokenStatus(): GithubTokenStatus {
+export function getPortalConfigStatus(): PortalConfigStatus {
+  const port = portalServerPort ?? 8448;
+
   if (envGithubToken()) {
     return {
       apkRepo: getGithubApkRepo(),
       tokenConfigured: true,
       tokenSource: "environment",
+      serverPort: port,
     };
   }
 
@@ -46,6 +52,7 @@ export function getGithubTokenStatus(): GithubTokenStatus {
       apkRepo: getGithubApkRepo(),
       tokenConfigured: true,
       tokenSource: "portal",
+      serverPort: port,
     };
   }
 
@@ -53,6 +60,7 @@ export function getGithubTokenStatus(): GithubTokenStatus {
     apkRepo: getGithubApkRepo(),
     tokenConfigured: false,
     tokenSource: null,
+    serverPort: port,
   };
 }
 
@@ -61,12 +69,14 @@ export async function loadPortalSettings(): Promise<void> {
     const raw = await readFile(SETTINGS_PATH, "utf-8");
     const parsed = JSON.parse(raw) as PortalSettingsFile;
     portalGithubToken = parsed.githubToken?.trim() || undefined;
+    portalServerPort = parsed.serverPort;
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") {
       console.error("Failed to load portal settings:", err);
     }
     portalGithubToken = undefined;
+    portalServerPort = undefined;
   }
 }
 
@@ -76,6 +86,9 @@ async function persistPortalSettings(): Promise<void> {
   const payload: PortalSettingsFile = {};
   if (portalGithubToken) {
     payload.githubToken = portalGithubToken;
+  }
+  if (portalServerPort !== undefined) {
+    payload.serverPort = portalServerPort;
   }
 
   await writeFile(SETTINGS_PATH, `${JSON.stringify(payload, null, 2)}\n`, {
@@ -120,6 +133,14 @@ export async function clearPortalGithubToken(): Promise<void> {
   }
 
   portalGithubToken = undefined;
+  await persistPortalSettings();
+}
+
+export async function setPortalServerPort(port: number): Promise<void> {
+  if (port < 1 || port > 65535) {
+    throw new Error("Port must be between 1 and 65535");
+  }
+  portalServerPort = port;
   await persistPortalSettings();
 }
 

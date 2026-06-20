@@ -87,4 +87,5 @@ export interface PortalGithubConfig {
   apkRepo: string;
   tokenConfigured: boolean;
   tokenSource: "environment" | "portal" | null;
+  serverPort: number;
 }

@@ -3,7 +3,8 @@ import { useAuth } from "react-oidc-context";
 import {
   applyPortalGithubToken,
   clearPortalGithubToken,
-  fetchPortalGithubConfig,
+  fetchPortalConfig,
+  applyPortalServerPort,
 } from "../api/client";
 import type { PortalGithubConfig } from "../types";
 
@@ -11,6 +12,7 @@ export function PortalConfiguration() {
   const auth = useAuth();
   const [config, setConfig] = useState<PortalGithubConfig | null>(null);
   const [token, setToken] = useState("");
+  const [serverPort, setServerPort] = useState("8448");
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -26,8 +28,9 @@ export function PortalConfiguration() {
     setError(null);
 
     try {
-      const data = await fetchPortalGithubConfig(auth.user);
+      const data = await fetchPortalConfig(auth.user);
       setConfig(data);
+      setServerPort(data.serverPort.toString());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load portal configuration"
@@ -59,6 +62,30 @@ export function PortalConfiguration() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to apply GitHub token");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleApplyPort = async () => {
+    if (!auth.user) return;
+
+    const portNum = parseInt(serverPort, 10);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      setError("Please enter a valid port number (1-65535)");
+      return;
+    }
+
+    setApplying(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const data = await applyPortalServerPort(auth.user, portNum);
+      setConfig(data);
+      setSuccessMessage("Server port successfully updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply Server Port");
     } finally {
       setApplying(false);
     }
@@ -187,6 +214,39 @@ export function PortalConfiguration() {
               </div>
             </div>
           )}
+        </section>
+      ) : null}
+
+      {config ? (
+        <section className="panel portal-config-panel" style={{ marginTop: "2rem" }}>
+          <h2>Tracking Server Port</h2>
+          <p className="portal-config-intro">
+            Set the port used by the device tracking server. The QR builder will automatically
+            reference this port when building the configuration URL for new devices.
+          </p>
+          <div className="portal-config-form">
+            <label className="filter-field portal-config-token-field">
+              <span>Server Port</span>
+              <input
+                type="number"
+                value={serverPort}
+                onChange={(event) => setServerPort(event.target.value)}
+                placeholder="8448"
+                min="1"
+                max="65535"
+              />
+            </label>
+            <div className="portal-config-actions">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={applying || !serverPort}
+                onClick={() => void handleApplyPort()}
+              >
+                {applying ? "Saving…" : "Save Port"}
+              </button>
+            </div>
+          </div>
         </section>
       ) : null}
     </div>

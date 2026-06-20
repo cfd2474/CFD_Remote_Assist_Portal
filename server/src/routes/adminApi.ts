@@ -17,7 +17,7 @@ import { reverseGeocode } from "../services/geocode.js";
 import { getLatestApkRelease } from "../services/githubReleases.js";
 import {
   clearPortalGithubToken,
-  getGithubTokenStatus,
+  getPortalConfigStatus,
   setPortalGithubToken,
   validateGithubToken,
   getGithubApkRepo,
@@ -373,8 +373,8 @@ adminApiRouter.get("/app/latest-apk", async (_req, res) => {
   }
 });
 
-adminApiRouter.get("/portal-config/github", (_req, res) => {
-  res.json(getGithubTokenStatus());
+adminApiRouter.get("/portal-config", (_req, res) => {
+  res.json(getPortalConfigStatus());
 });
 
 adminApiRouter.put("/portal-config/github", async (req, res) => {
@@ -389,7 +389,7 @@ adminApiRouter.put("/portal-config/github", async (req, res) => {
     const trimmed = token.trim();
     await validateGithubToken(trimmed, repo);
     await setPortalGithubToken(trimmed);
-    res.json({ ok: true, ...getGithubTokenStatus() });
+    res.json({ ok: true, ...getPortalConfigStatus() });
   } catch (err) {
     console.error("Apply GitHub token error:", err);
     res.status(400).json({
@@ -401,11 +401,30 @@ adminApiRouter.put("/portal-config/github", async (req, res) => {
 adminApiRouter.delete("/portal-config/github", async (_req, res) => {
   try {
     await clearPortalGithubToken();
-    res.json({ ok: true, ...getGithubTokenStatus() });
+    res.json({ ok: true, ...getPortalConfigStatus() });
   } catch (err) {
     console.error("Clear GitHub token error:", err);
     res.status(400).json({
       error: err instanceof Error ? err.message : "Failed to clear GitHub token",
+    });
+  }
+});
+
+adminApiRouter.put("/portal-config/server-port", async (req, res) => {
+  const port = req.body?.port;
+  if (typeof port !== "number") {
+    res.status(400).json({ error: "port is required and must be a number" });
+    return;
+  }
+
+  try {
+    const { setPortalServerPort } = await import("../services/portalSettings.js");
+    await setPortalServerPort(port);
+    res.json({ ok: true, ...getPortalConfigStatus() });
+  } catch (err) {
+    console.error("Apply Server Port error:", err);
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Failed to apply Server Port",
     });
   }
 });

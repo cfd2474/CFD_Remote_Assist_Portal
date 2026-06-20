@@ -148,10 +148,10 @@ export async function fetchLatestApk(user: User): Promise<LatestApkRelease> {
   return data.apk;
 }
 
-export async function fetchPortalGithubConfig(
+export async function fetchPortalConfig(
   user: User
 ): Promise<PortalGithubConfig> {
-  return apiFetch<PortalGithubConfig>("/api/admin/portal-config/github", user);
+  return apiFetch<PortalGithubConfig>("/api/admin/portal-config", user);
 }
 
 export async function applyPortalGithubToken(
@@ -175,6 +175,20 @@ export async function clearPortalGithubToken(
     "/api/admin/portal-config/github",
     user,
     { method: "DELETE" }
+  );
+}
+
+export async function applyPortalServerPort(
+  user: User,
+  port: number
+): Promise<PortalGithubConfig & { ok: true }> {
+  return apiFetch<PortalGithubConfig & { ok: true }>(
+    "/api/admin/portal-config/server-port",
+    user,
+    {
+      method: "PUT",
+      body: JSON.stringify({ port }),
+    }
   );
 }
 
