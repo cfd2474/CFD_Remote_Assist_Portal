@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "react-oidc-context";
-import { fetchEnrollmentTokens, createEnrollmentToken, revokeEnrollmentToken, fetchPortalConfig, type EnrollmentToken } from "../api/client";
+import { fetchEnrollmentTokens, createEnrollmentToken, revokeEnrollmentToken, deleteEnrollmentToken, fetchPortalConfig, type EnrollmentToken } from "../api/client";
 
 export function Enrollment() {
   const auth = useAuth();
@@ -74,6 +74,21 @@ export function Enrollment() {
       setError(err.message || "Failed to revoke token");
     }
   }
+
+  async function handleDelete(token: string) {
+    if (!auth.user) return;
+    if (!confirm("Are you sure you want to permanently remove this token?")) return;
+    try {
+      await deleteEnrollmentToken(auth.user, token);
+      loadTokens();
+      if (selectedToken?.token === token) {
+        setSelectedToken(null);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to remove token");
+    }
+  }
+
 
   function renderQrCode(t: EnrollmentToken) {
     const trackingUrl = `${window.location.protocol}//${window.location.hostname}:${serverPort}`;
@@ -185,13 +200,21 @@ export function Enrollment() {
                   <button onClick={() => setSelectedToken(t)} disabled={!t.is_active} style={{ marginRight: "0.5rem" }}>
                     View QR / Config
                   </button>
-                  <button
-                    onClick={() => handleRevoke(t.token)}
-                    disabled={!t.is_active}
-                    className="danger-button"
-                  >
-                    Revoke
-                  </button>
+                  {t.is_active ? (
+                    <button
+                      onClick={() => handleRevoke(t.token)}
+                      className="danger-button"
+                    >
+                      Revoke
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleDelete(t.token)}
+                      className="danger-button"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

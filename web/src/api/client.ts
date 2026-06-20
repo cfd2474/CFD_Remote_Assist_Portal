@@ -221,3 +221,7 @@ export async function createEnrollmentToken(
 export async function revokeEnrollmentToken(user: User, token: string): Promise<void> {
   await apiFetch(`/api/admin/enrollment-tokens/${token}`, user, { method: "DELETE" });
 }
+
+export async function deleteEnrollmentToken(user: User, token: string): Promise<void> {
+  await apiFetch(`/api/admin/enrollment-tokens/${token}/remove`, user, { method: "DELETE" });
+}

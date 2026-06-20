@@ -469,3 +469,14 @@ adminApiRouter.delete("/enrollment-tokens/:token", async (req, res) => {
     res.status(500).json({ error: "Failed to revoke token" });
   }
 });
+
+adminApiRouter.delete("/enrollment-tokens/:token/remove", async (req, res) => {
+  try {
+    await pool.query("DELETE FROM enrollment_tokens WHERE token = $1", [
+      req.params.token,
+    ]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to remove token" });
+  }
+});
