@@ -56,6 +56,18 @@ ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_location_accuracy_m REAL;
 ALTER TABLE telemetry_history ADD COLUMN IF NOT EXISTS accuracy_m REAL;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS agency TEXT;
 ALTER TABLE pending_commands ADD COLUMN IF NOT EXISTS command_payload JSONB;
+ALTER TABLE pending_commands DROP COLUMN IF EXISTS connection_secret;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS public_key TEXT;
+
+CREATE TABLE IF NOT EXISTS enrollment_tokens (
+  token TEXT PRIMARY KEY,
+  description TEXT,
+  agency TEXT,
+  tls_pin_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
 `;
 
 async function migrate() {

@@ -12,6 +12,7 @@ import { ReleaseNotesVersion } from "./pages/ReleaseNotesVersion";
 import { PortalConfiguration } from "./pages/PortalConfiguration";
 import { Callback } from "./pages/Callback";
 import { Login } from "./pages/Login";
+import { Enrollment } from "./pages/Enrollment";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
           }
         >
           <Route index element={<DeviceList />} />
+          <Route path="enrollment" element={<Enrollment />} />
           <Route path="portal-configuration" element={<PortalConfiguration />} />
           <Route path="documentation" element={<Documentation />} />
           <Route path="documentation/release-notes" element={<ReleaseNotesList />} />

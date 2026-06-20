@@ -135,7 +135,6 @@ export class ConnectionHub {
   sendCommand(
     uid: string,
     command: DeviceCommand,
-    secret: string,
     options?: CommandDeliveryOptions
   ): boolean {
     const ws = this.devices.get(uid);
@@ -143,7 +142,7 @@ export class ConnectionHub {
       return false;
     }
 
-    ws.send(JSON.stringify(formatCommandForDevice(command, secret, options)));
+    ws.send(JSON.stringify(formatCommandForDevice(command, options)));
 
     console.log(`Command sent via WebSocket: uid=${uid} command=${command}`);
 

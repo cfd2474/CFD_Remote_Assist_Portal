@@ -5,6 +5,7 @@ import type { DeviceRow } from "../types.js";
 import { hub } from "./hub.js";
 import { config } from "../config.js";
 import { drainCommands } from "../services/commands.js";
+import bcrypt from "bcrypt";
 import {
   isSignalingMessage,
   describeSignaling,
@@ -36,10 +37,13 @@ function previewMessage(message: Record<string, unknown>): string {
 
 async function verifyDevice(uid: string, secret: string): Promise<DeviceRow | null> {
   const result = await pool.query<DeviceRow>(
-    "SELECT * FROM devices WHERE uid = $1 AND connection_secret = $2",
-    [uid, secret]
+    "SELECT * FROM devices WHERE uid = $1",
+    [uid]
   );
-  return result.rows[0] ?? null;
+  const row = result.rows[0];
+  if (!row) return null;
+  const match = await bcrypt.compare(secret, row.connection_secret);
+  return match ? row : null;
 }
 
 async function verifyAdminToken(token: string): Promise<boolean> {

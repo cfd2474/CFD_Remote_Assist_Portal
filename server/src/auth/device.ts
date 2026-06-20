@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { pool } from "../db/pool.js";
 import { config } from "../config.js";
 import type { DeviceRow } from "../types.js";
+import bcrypt from "bcrypt";
 
 declare global {
   namespace Express {
@@ -29,21 +30,29 @@ export async function requireDeviceSecret(
     return;
   }
 
-  const result = uid
-    ? await pool.query<DeviceRow>(
-        "SELECT * FROM devices WHERE uid = $1 AND connection_secret = $2",
-        [uid, secret]
-      )
-    : await pool.query<DeviceRow>(
-        "SELECT * FROM devices WHERE connection_secret = $1",
-        [secret]
-      );
+  if (!uid) {
+    res.status(401).json({ error: "Device uid is required for authentication" });
+    return;
+  }
+
+  const result = await pool.query<DeviceRow>(
+    "SELECT * FROM devices WHERE uid = $1",
+    [uid]
+  );
 
   if (result.rows.length === 0) {
     res.status(401).json({ error: "Invalid device credentials" });
     return;
   }
 
-  req.device = result.rows[0];
+  const device = result.rows[0];
+  const match = await bcrypt.compare(secret, device.connection_secret);
+
+  if (!match) {
+    res.status(401).json({ error: "Invalid device credentials" });
+    return;
+  }
+
+  req.device = device;
   next();
 }

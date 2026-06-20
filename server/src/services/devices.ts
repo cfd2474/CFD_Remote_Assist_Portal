@@ -12,6 +12,8 @@ import {
   downsampleLocationHistory,
 } from "./locationHistory.js";
 
+import bcrypt from "bcrypt";
+
 function generateConnectionSecret(): string {
   return randomBytes(32).toString("hex");
 }
@@ -19,13 +21,25 @@ function generateConnectionSecret(): string {
 export async function registerDevice(
   data: DeviceRegistration
 ): Promise<{ device: DeviceRow; connection_secret: string; is_new: boolean }> {
+  if (!data.enrollment_token) {
+    throw new Error("Missing enrollment_token");
+  }
+
+  const tokenCheck = await pool.query(
+    "SELECT * FROM enrollment_tokens WHERE token = $1 AND is_active = TRUE AND (expires_at IS NULL OR expires_at > NOW())",
+    [data.enrollment_token]
+  );
+
+  if (tokenCheck.rows.length === 0) {
+    throw new Error("Invalid or expired enrollment token");
+  }
+
   const existing = await pool.query<DeviceRow>(
     "SELECT * FROM devices WHERE uid = $1",
     [data.uid]
   );
 
   if (existing.rows.length > 0) {
-    const device = existing.rows[0];
     await pool.query(
       `UPDATE devices SET
         serial = COALESCE($2, serial),
@@ -35,6 +49,7 @@ export async function registerDevice(
         agency = COALESCE($6, agency),
         phone_number = COALESCE($7, phone_number),
         app_version = COALESCE($8, app_version),
+        public_key = COALESCE($9, public_key),
         last_seen_at = NOW()
       WHERE uid = $1`,
       [
@@ -46,6 +61,7 @@ export async function registerDevice(
         data.agency ?? null,
         data.phone_number ?? null,
         data.app_version ?? null,
+        data.public_key ?? null,
       ]
     );
     const updated = await pool.query<DeviceRow>(
@@ -54,17 +70,19 @@ export async function registerDevice(
     );
     return {
       device: updated.rows[0],
-      connection_secret: device.connection_secret,
+      connection_secret: "",
       is_new: false,
     };
   }
 
   const connection_secret = generateConnectionSecret();
+  const hashedSecret = await bcrypt.hash(connection_secret, 10);
+
   const result = await pool.query<DeviceRow>(
     `INSERT INTO devices (
       uid, serial, imei, device_name, model, agency, phone_number, app_version,
-      connection_secret, last_seen_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      connection_secret, public_key, last_seen_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
     RETURNING *`,
     [
       data.uid,
@@ -75,7 +93,8 @@ export async function registerDevice(
       data.agency ?? null,
       data.phone_number ?? null,
       data.app_version ?? null,
-      connection_secret,
+      hashedSecret,
+      data.public_key ?? null,
     ]
   );
 

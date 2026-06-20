@@ -24,8 +24,22 @@ import {
 } from "../services/portalSettings.js";
 import { resolveModelDisplays, getModelDisplay } from "../services/phoneDb.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
+import crypto from "crypto";
 
 export const adminApiRouter = Router();
+
+function encryptPin(pin: string, publicKeyBase64: string): string {
+  const pem = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+  const encrypted = crypto.publicEncrypt(
+    {
+      key: pem,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: "sha256",
+    },
+    Buffer.from(pin, "utf8")
+  );
+  return encrypted.toString("base64");
+}
 
 adminApiRouter.use(requireAdmin);
 
@@ -190,11 +204,18 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
       return;
     }
 
-    const commandOptions = pin ? { pin } : undefined;
+    let commandOptions: { pin?: string } | undefined = undefined;
+    if (pin && command === "REMOTE_UNLOCK") {
+      if (!device.public_key) {
+        res.status(400).json({ error: "Device has no registered public key for E2EE" });
+        return;
+      }
+      commandOptions = { pin: encryptPin(pin, device.public_key) };
+    }
+
     const sent = hub.sendCommand(
       req.params.uid,
       command,
-      device.connection_secret,
       commandOptions
     );
 
@@ -210,7 +231,6 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
       await queueCommand(
         req.params.uid,
         command,
-        device.connection_secret,
         commandOptions
       );
       res.json({
@@ -387,5 +407,46 @@ adminApiRouter.delete("/portal-config/github", async (_req, res) => {
     res.status(400).json({
       error: err instanceof Error ? err.message : "Failed to clear GitHub token",
     });
+  }
+});
+
+import { randomBytes } from "crypto";
+import { pool } from "../db/pool.js";
+
+adminApiRouter.get("/enrollment-tokens", async (_req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM enrollment_tokens ORDER BY created_at DESC"
+    );
+    res.json({ tokens: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to list enrollment tokens" });
+  }
+});
+
+adminApiRouter.post("/enrollment-tokens", async (req, res) => {
+  const { agency, description, tls_pin_hash } = req.body;
+  const token = randomBytes(24).toString("hex");
+  try {
+    const result = await pool.query(
+      `INSERT INTO enrollment_tokens (token, agency, description, tls_pin_hash, is_active)
+       VALUES ($1, $2, $3, $4, TRUE) RETURNING *`,
+      [token, agency || null, description || null, tls_pin_hash || null]
+    );
+    res.json({ token: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create enrollment token" });
+  }
+});
+
+adminApiRouter.delete("/enrollment-tokens/:token", async (req, res) => {
+  try {
+    await pool.query(
+      "UPDATE enrollment_tokens SET is_active = FALSE WHERE token = $1",
+      [req.params.token]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to revoke token" });
   }
 });

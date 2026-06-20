@@ -7,6 +7,8 @@ export interface DeviceRegistration {
   agency?: string;
   phone_number?: string;
   app_version?: string;
+  public_key?: string;
+  enrollment_token?: string;
 }
 
 export interface TelemetryPayload {
@@ -75,6 +77,7 @@ export interface DeviceRow {
   agency: string | null;
   phone_number: string | null;
   app_version: string | null;
+  public_key: string | null;
   connection_secret: string;
   registered_at: Date;
   last_seen_at: Date | null;

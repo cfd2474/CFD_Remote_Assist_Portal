@@ -30,6 +30,9 @@ export function Layout() {
           <Link to="/" className="app-subheader-link">
             Managed Devices
           </Link>
+          <Link to="/enrollment" className="app-subheader-link">
+            Device Enrollment
+          </Link>
           <Link to="/portal-configuration" className="app-subheader-link">
             Portal Configuration
           </Link>

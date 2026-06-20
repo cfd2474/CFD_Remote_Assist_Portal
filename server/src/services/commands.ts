@@ -4,7 +4,6 @@ import type { DeviceCommand } from "../types.js";
 export interface DeviceCommandMessage {
   type: "command";
   command: DeviceCommand;
-  connection_secret: string;
   pin?: string;
 }
 
@@ -14,13 +13,11 @@ export interface CommandDeliveryOptions {
 
 function buildCommandMessage(
   command: DeviceCommand,
-  connectionSecret: string,
   options?: CommandDeliveryOptions
 ): DeviceCommandMessage {
   const message: DeviceCommandMessage = {
     type: "command",
     command,
-    connection_secret: connectionSecret,
   };
 
   if (options?.pin && command === "REMOTE_UNLOCK") {
@@ -33,7 +30,6 @@ function buildCommandMessage(
 export async function queueCommand(
   uid: string,
   command: DeviceCommand,
-  connectionSecret: string,
   options?: CommandDeliveryOptions
 ): Promise<void> {
   const payload =
@@ -42,9 +38,9 @@ export async function queueCommand(
       : null;
 
   await pool.query(
-    `INSERT INTO pending_commands (uid, command, connection_secret, command_payload)
-     VALUES ($1, $2, $3, $4)`,
-    [uid, command, connectionSecret, payload]
+    `INSERT INTO pending_commands (uid, command, command_payload)
+     VALUES ($1, $2, $3)`,
+    [uid, command, payload]
   );
   console.log(`Command queued: uid=${uid} command=${command}`);
 }
@@ -52,12 +48,11 @@ export async function queueCommand(
 export async function drainCommands(uid: string): Promise<DeviceCommandMessage[]> {
   const result = await pool.query<{
     command: DeviceCommand;
-    connection_secret: string;
     command_payload: { pin?: string } | null;
   }>(
     `DELETE FROM pending_commands
      WHERE uid = $1
-     RETURNING command, connection_secret, command_payload`,
+     RETURNING command, command_payload`,
     [uid]
   );
 
@@ -68,7 +63,7 @@ export async function drainCommands(uid: string): Promise<DeviceCommandMessage[]
   }
 
   return result.rows.map((row) =>
-    buildCommandMessage(row.command, row.connection_secret, {
+    buildCommandMessage(row.command, {
       pin: row.command_payload?.pin,
     })
   );
@@ -76,8 +71,7 @@ export async function drainCommands(uid: string): Promise<DeviceCommandMessage[]
 
 export function formatCommandForDevice(
   command: DeviceCommand,
-  connectionSecret: string,
   options?: CommandDeliveryOptions
 ): DeviceCommandMessage {
-  return buildCommandMessage(command, connectionSecret, options);
+  return buildCommandMessage(command, options);
 }
