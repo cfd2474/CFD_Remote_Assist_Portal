@@ -35,6 +35,11 @@ export async function registerDevice(
     throw new Error("Invalid or expired enrollment token");
   }
 
+  const tokenRecord = tokenCheck.rows[0];
+  if (tokenRecord.agency && !data.agency) {
+    data.agency = tokenRecord.agency;
+  }
+
   const existing = await pool.query<DeviceRow>(
     "SELECT * FROM devices WHERE uid = $1",
     [data.uid]
