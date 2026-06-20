@@ -109,9 +109,14 @@ deviceApiRouter.post("/register", async (req, res) => {
         ? "Device registered. Store connection_secret in MDM managed config."
         : "Device re-registered.",
     });
-  } catch (err) {
-    console.error("Registration error:", err);
-    res.status(500).json({ error: "Registration failed" });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("enrollment_token")) {
+      console.log(`Registration error: ${error.message}`);
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    console.error(`Registration error:`, error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
