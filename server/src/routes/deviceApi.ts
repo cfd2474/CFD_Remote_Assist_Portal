@@ -76,6 +76,8 @@ function normalizeRegistration(
     agency: firstString(input.agency),
     phone_number: firstString(input.phone_number, input.phoneNumber),
     app_version: firstString(input.app_version, input.appVersion),
+    enrollment_token: firstString(input.enrollment_token, input.token),
+    public_key: firstString(input.public_key, input.publicKey),
   };
 }
 

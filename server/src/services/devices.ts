@@ -40,6 +40,9 @@ export async function registerDevice(
   );
 
   if (existing.rows.length > 0) {
+    const connection_secret = generateConnectionSecret();
+    const hashedSecret = await bcrypt.hash(connection_secret, 10);
+
     await pool.query(
       `UPDATE devices SET
         serial = COALESCE($2, serial),
@@ -50,6 +53,7 @@ export async function registerDevice(
         phone_number = COALESCE($7, phone_number),
         app_version = COALESCE($8, app_version),
         public_key = COALESCE($9, public_key),
+        connection_secret = $10,
         last_seen_at = NOW()
       WHERE uid = $1`,
       [
@@ -62,6 +66,7 @@ export async function registerDevice(
         data.phone_number ?? null,
         data.app_version ?? null,
         data.public_key ?? null,
+        hashedSecret
       ]
     );
     const updated = await pool.query<DeviceRow>(
@@ -70,7 +75,7 @@ export async function registerDevice(
     );
     return {
       device: updated.rows[0],
-      connection_secret: "",
+      connection_secret: connection_secret,
       is_new: false,
     };
   }
