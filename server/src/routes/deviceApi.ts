@@ -113,7 +113,11 @@ deviceApiRouter.post("/register", async (req, res) => {
         : "Device re-registered.",
     });
   } catch (error) {
-    if (error instanceof Error && error.message.includes("enrollment_token")) {
+    if (error instanceof Error && (
+      error.message.includes("enrollment_token") ||
+      error.message.includes("enrollment token") ||
+      error.message.includes("re-registration")
+    )) {
       console.log(`Registration error: ${error.message}`);
       res.status(400).json({ error: error.message });
       return;
