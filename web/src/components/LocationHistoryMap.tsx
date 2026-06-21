@@ -97,6 +97,7 @@ export function LocationHistoryMap({
               point.number,
               point.number === selectedNumber
             )}
+            zIndexOffset={point.number === selectedNumber ? 1000 : 0}
           >
             <Popup>
               #{point.number} — {new Date(point.recorded_at).toLocaleString()}
