@@ -184,6 +184,13 @@ export function RemoteViewer({
             aria-hidden
           />
         )}
+        {!streamActive && active && deviceOnline && adminWsConnected && status !== "failed" && (
+          <div className="remote-connecting-overlay">
+            <div className="spinner"></div>
+            <h3>Establishing Secure Video</h3>
+            <p>Please be patient! WebRTC negotiations and network routing can take up to 15 seconds depending on connection speed.</p>
+          </div>
+        )}
       </div>
       <p className="remote-hint">
         {active && adminWsConnected ? (
