@@ -11,6 +11,7 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 **Portal & App**
 
+- **Compatibility**: The v3.0.0 portal requires the EUD Remote Assist App v3.0.0 to function properly due to the underlying security and naming changes. Older app versions will fail to connect.
 - Re-branded and completely renamed the project from CFD Remote Assist to EUD Remote Assist.
 - Migrated all infrastructure configurations, docker container namespaces, database identifiers, documentation, and internal code names to the new `eud-remote-assist` standard.
 - **QR Code Registration**: Introduced a streamlined enrollment flow allowing new devices to register simply by scanning a dynamically generated QR code directly from the portal UI.
