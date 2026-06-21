@@ -1,3 +1,7 @@
+
+## v3.0.1
+* WebRTC UI: Replaced video element with "Stream Failed" placeholder when WebRTC stream fails to establish.
+* WebRTC UI: Removed "Retry WebRTC" button when stream is connecting or already active to prevent accidental resets.
 # EUD Remote Assist Portal — Release Notes
 
 Running changelog for the **portal server and admin UI**. Update this file on every version release.

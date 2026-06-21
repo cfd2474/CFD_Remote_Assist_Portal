@@ -111,9 +111,11 @@ export function RemoteViewer({
   return (
     <div className="remote-viewer">
       <div className="remote-toolbar">
-        <button type="button" onClick={() => void startSession()}>
-          {streamActive ? "Restart stream" : "Retry WebRTC"}
-        </button>
+        {(status === "failed" || status === "waiting") && (
+          <button type="button" onClick={() => void startSession()}>
+            Retry WebRTC
+          </button>
+        )}
         <span className={streamActive ? "status-ok" : "status-warn"}>
           {statusLabel(status, streamActive, deviceOnline, deviceReconnecting, deviceStreamReady)}
         </span>
@@ -167,14 +169,20 @@ export function RemoteViewer({
         onPointerLeave={streamActive ? onPointerLeave : undefined}
         onContextMenu={streamActive ? onContextMenu : undefined}
       >
-        <video
-          ref={videoRef}
-          className="remote-video"
-          autoPlay
-          playsInline
-          muted
-        />
-        {showCursor && cursorPosition && (
+        {status === "failed" ? (
+          <div className="remote-failed-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%', backgroundColor: '#0f172a' }}>
+            <img src="/stream-failed.png" alt="Stream Failed" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            className="remote-video"
+            autoPlay
+            playsInline
+            muted
+          />
+        )}
+        {status !== "failed" && showCursor && cursorPosition && (
           <div
             className="remote-cursor-indicator"
             style={{
