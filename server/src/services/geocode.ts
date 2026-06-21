@@ -52,7 +52,7 @@ export async function reverseGeocode(
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "CFD-Remote-Assist-Portal/1.0 (https://remote.tak-solutions.com)",
+        "EUD-Remote-Assist-Portal/1.0 (https://remote.tak-solutions.com)",
     },
   });
 

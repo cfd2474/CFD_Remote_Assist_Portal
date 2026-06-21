@@ -44,4 +44,4 @@ Open **Download EUD Remote Assist .apk** in the portal or check **Portal Configu
 
 ## infra-TAK
 
-Add `GITHUB_APK_REPO` to the gitignored `~/cfd-remote-assist/.env`, or use **Portal Configuration** after deploy. Ensure `./data` is persisted on the host (default Docker bind mount).
+Add `GITHUB_APK_REPO` to the gitignored `~/eud-remote-assist/.env`, or use **Portal Configuration** after deploy. Ensure `./data` is persisted on the host (default Docker bind mount).

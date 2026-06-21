@@ -1,6 +1,6 @@
 # Android App — Server Integration Requirements
 
-This document is the **primary integration spec** for the CFD Assist Android app working with the **CFD Remote Assist Portal** at `https://remote.tak-solutions.com`.
+This document is the **primary integration spec** for the CFD Assist Android app working with the **EUD Remote Assist Portal** at `https://remote.tak-solutions.com`.
 
 It is written to be handed directly to the app developer/agent. It contains exact commands, message formats, designed flows, timing expectations, dependencies, and a focused diagnosis of the **current remote-assist stall** (see **§8.10 — START HERE for the current bug**).
 

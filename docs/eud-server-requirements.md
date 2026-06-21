@@ -1,6 +1,6 @@
 # EUD Application — Server Requirements Compliance
 
-This document maps the Android (EUD) app server requirements to the deployed CFD Remote Assist platform at **remote.tak-solutions.com**.
+This document maps the Android (EUD) app server requirements to the deployed EUD Remote Assist platform at **remote.tak-solutions.com**.
 
 ## Requirement checklist
 
@@ -83,8 +83,8 @@ Device traffic uses **8448**, not 8080. Port 8080 on this host is reserved for a
 
 ## 4. Database
 
-- **Engine:** PostgreSQL 16 (Docker container `cfd-remote-assist-postgres-1`)
-- **Database:** `cfd_remote_assist`
+- **Engine:** PostgreSQL 16 (Docker container `eud-remote-assist-postgres-1`)
+- **Database:** `eud_remote_assist`
 - **Primary key:** `devices.uid` (Android ID)
 
 Stored at registration:

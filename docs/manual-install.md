@@ -22,10 +22,10 @@ docker compose version
 ## 2. Clone the repository
 
 ```bash
-sudo mkdir -p /opt/cfd-remote-assist
-sudo chown $USER:$USER /opt/cfd-remote-assist
-git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/cfd-remote-assist
-cd /opt/cfd-remote-assist
+sudo mkdir -p /opt/eud-remote-assist
+sudo chown $USER:$USER /opt/eud-remote-assist
+git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/eud-remote-assist
+cd /opt/eud-remote-assist
 ```
 
 ## 3. Configure environment
@@ -42,10 +42,10 @@ Required values:
 | `POSTGRES_PASSWORD` | Strong random password |
 | `PUBLIC_BASE_URL` | `https://remote.yourcompany.com:8448` |
 | `CORS_ORIGIN` | `https://remote.yourcompany.com` (admin portal, port 443) |
-| `OIDC_ISSUER` | `https://auth.yourcompany.com/application/o/cfd-remote-assist/` |
-| `OIDC_JWKS_URI` | `https://auth.yourcompany.com/application/o/cfd-remote-assist/jwks/` |
-| `OIDC_CLIENT_ID` | `cfd-remote-assist` |
-| `OIDC_AUDIENCE` | `cfd-remote-assist` (optional) |
+| `OIDC_ISSUER` | `https://auth.yourcompany.com/application/o/eud-remote-assist/` |
+| `OIDC_JWKS_URI` | `https://auth.yourcompany.com/application/o/eud-remote-assist/jwks/` |
+| `OIDC_CLIENT_ID` | `eud-remote-assist` |
+| `OIDC_AUDIENCE` | `eud-remote-assist` (optional) |
 | `NGINX_BIND_ADDR` | `127.0.0.1` when using host nginx (recommended) |
 | `HTTP_PORT` | `8091` when host nginx proxies to loopback (see host nginx examples) |
 | `GITHUB_APK_REPO` | `owner/repo` with `.apk` GitHub Releases |
@@ -98,7 +98,7 @@ Open the portal at your configured URL and sign in via Authentik.
 When new code is pushed to the repo:
 
 ```bash
-cd /opt/cfd-remote-assist
+cd /opt/eud-remote-assist
 git pull
 cat VERSION   # expected release after pull
 docker compose up -d --build

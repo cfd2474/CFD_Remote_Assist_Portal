@@ -2,7 +2,7 @@ import type { AuthProviderProps } from "react-oidc-context";
 import { WebStorageStateStore } from "oidc-client-ts";
 
 const authority = import.meta.env.VITE_OIDC_AUTHORITY ?? "";
-const clientId = import.meta.env.VITE_OIDC_CLIENT_ID ?? "cfd-remote-assist";
+const clientId = import.meta.env.VITE_OIDC_CLIENT_ID ?? "eud-remote-assist";
 
 export const oidcConfig: AuthProviderProps = {
   authority,

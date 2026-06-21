@@ -53,7 +53,7 @@ This document explains **how to create the entire application**, step by step, i
 
 The EUD Remote Assist app is a **managed Android device client** that:
 
-1. **Registers** with the CFD Remote Assist Portal device API and stores a `connection_secret`.
+1. **Registers** with the EUD Remote Assist Portal device API and stores a `connection_secret`.
 2. **Maintains a persistent WebSocket** to `/ws/device` for instant admin commands and WebRTC signaling.
 3. **Reports telemetry** (location, battery) on an MDM-configured interval and via **30-second command poll** fallback.
 4. On admin **Connect**, performs **screen capture + WebRTC** so the portal browser can view the device screen.

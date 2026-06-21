@@ -84,8 +84,8 @@ Full steps: [docs/manual-install.md](docs/manual-install.md)
 infra-TAK co-deploy: [docs/infratak-integration.md](docs/infratak-integration.md)
 
 ```bash
-git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/cfd-remote-assist
-cd /opt/cfd-remote-assist
+git clone https://github.com/cfd2474/EUD_Remote_Assist_Portal.git /opt/eud-remote-assist
+cd /opt/eud-remote-assist
 cp .env.example .env   # edit with your values
 docker compose up -d --build
 ```
@@ -93,7 +93,7 @@ docker compose up -d --build
 To update after new code is pushed:
 
 ```bash
-cd /opt/cfd-remote-assist && git pull && docker compose up -d --build
+cd /opt/eud-remote-assist && git pull && docker compose up -d --build
 ```
 
 ## Configuration
@@ -113,7 +113,7 @@ See:
 
 ```bash
 # Terminal 1 — database
-docker run -d --name cfd-pg -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=cfd_remote_assist -e POSTGRES_USER=cfd -p 5432:5432 postgres:16-alpine
+docker run -d --name cfd-pg -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=eud_remote_assist -e POSTGRES_USER=cfd -p 5432:5432 postgres:16-alpine
 
 # Terminal 2 — API
 cd server && cp .env.example .env && npm install && npm run db:migrate && npm run dev

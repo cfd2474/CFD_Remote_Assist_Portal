@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-cfd}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-cfd_remote_assist}
+      POSTGRES_DB: ${POSTGRES_DB:-eud_remote_assist}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,9 +25,9 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-cfd}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cfd_remote_assist}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cfd}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-eud_remote_assist}
       OIDC_ISSUER: ${OIDC_ISSUER:?Set OIDC_ISSUER}
-      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-cfd-remote-assist}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-eud-remote-assist}
       OIDC_JWKS_URI: ${OIDC_JWKS_URI:-}
       OIDC_ADMIN_GROUP: ${OIDC_ADMIN_GROUP:-}
       OIDC_ADMIN_EMAILS: ${OIDC_ADMIN_EMAILS:-}
@@ -48,7 +48,7 @@ services:
       dockerfile: web/Dockerfile
       args:
         VITE_OIDC_AUTHORITY: ${OIDC_ISSUER}
-        VITE_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-cfd-remote-assist}
+        VITE_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-eud-remote-assist}
         VITE_API_BASE: ""
         VITE_WS_BASE: ""
     restart: unless-stopped

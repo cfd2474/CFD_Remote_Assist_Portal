@@ -3,7 +3,7 @@
 This document describes how [infra-TAK](https://github.com/takwerx/infra-TAK) deploys the EUD Remote Assist Portal without modifying tracked files in the git clone. After upstream **v2.1.0+**, updates are:
 
 ```bash
-cd ~/cfd-remote-assist
+cd ~/eud-remote-assist
 git pull --ff-only
 docker compose up -d --build
 ```
@@ -18,9 +18,9 @@ Related: [versioning.md](versioning.md), [mdm-config.md](mdm-config.md), [manual
 
 infra-TAK is a host orchestrator. For EUD Remote Assist it:
 
-1. Clones `https://github.com/cfd2474/EUD_Remote_Assist_Portal.git` → `~/cfd-remote-assist`
+1. Clones `https://github.com/cfd2474/EUD_Remote_Assist_Portal.git` → `~/eud-remote-assist`
 2. Writes a **gitignored** `.env` with site-specific values (FQDN, Authentik OIDC, passwords)
-3. Provisions an **Authentik OAuth2 provider** (slug `cfd-remote-assist`, public SPA + PKCE)
+3. Provisions an **Authentik OAuth2 provider** (slug `eud-remote-assist`, public SPA + PKCE)
 4. Runs **Docker Compose** from the clone (no edits to `docker-compose.yml`)
 5. Fronts the stack with **Caddy** (TLS termination, port split)
 6. On update: `git pull --ff-only` → refresh `.env` → `docker compose up -d --build`
@@ -31,13 +31,13 @@ infra-TAK is a host orchestrator. For EUD Remote Assist it:
 
 | Setting | infra-TAK value | Why |
 |---------|-----------------|-----|
-| Install dir | `~/cfd-remote-assist` | infra-TAK constant |
+| Install dir | `~/eud-remote-assist` | infra-TAK constant |
 | `NGINX_BIND_ADDR` | `127.0.0.1` | Loopback only — Caddy is public ingress |
 | `HTTP_PORT` | `8767` | Caddy upstream to Docker nginx |
 | `NGINX_ENABLE_TLS` | `false` | Caddy terminates TLS; inner nginx is HTTP-only |
 | `PUBLIC_BASE_URL` | `https://remote.<fqdn>:8448` | Android MDM `tracking_server_url` |
 | `CORS_ORIGIN` | `https://remote.<fqdn>` | Admin portal origin (port 443) |
-| `OIDC_ISSUER` | `https://tak.<fqdn>/application/o/cfd-remote-assist/` | Authentik application slug |
+| `OIDC_ISSUER` | `https://tak.<fqdn>/application/o/eud-remote-assist/` | Authentik application slug |
 | `OIDC_JWKS_URI` | `{issuer}jwks/` | **Required** — Authentik app JWKS path |
 | Authentik client | **Public** + PKCE | SPA (`oidc-client-ts`); confidential client → HTTP 400 on `/token/` |
 
@@ -46,12 +46,12 @@ infra-TAK is a host orchestrator. For EUD Remote Assist it:
 ```env
 POSTGRES_USER=cfd
 POSTGRES_PASSWORD=<generated>
-POSTGRES_DB=cfd_remote_assist
+POSTGRES_DB=eud_remote_assist
 PUBLIC_BASE_URL=https://remote.example.com:8448
-OIDC_ISSUER=https://tak.example.com/application/o/cfd-remote-assist/
+OIDC_ISSUER=https://tak.example.com/application/o/eud-remote-assist/
 OIDC_AUDIENCE=<authentik-client-id>
 OIDC_CLIENT_ID=<authentik-client-id>
-OIDC_JWKS_URI=https://tak.example.com/application/o/cfd-remote-assist/jwks/
+OIDC_JWKS_URI=https://tak.example.com/application/o/eud-remote-assist/jwks/
 CORS_ORIGIN=https://remote.example.com
 NGINX_BIND_ADDR=127.0.0.1
 HTTP_PORT=8767
@@ -121,8 +121,8 @@ Optional host-specific overrides: `docker-compose.override.yml` (gitignored).
 
 infra-TAK auto-creates:
 
-- **Provider name:** `CFD Remote Assist`
-- **Slug:** `cfd-remote-assist`
+- **Provider name:** `EUD Remote Assist`
+- **Slug:** `eud-remote-assist`
 - **Client type:** `public` (not confidential)
 - **Redirect URIs:**
   - `https://remote.<fqdn>`
@@ -181,8 +181,8 @@ NGINX_ENABLE_TLS=false
 PUBLIC_BASE_URL=https://remote.test.local:8448
 CORS_ORIGIN=https://remote.test.local
 POSTGRES_PASSWORD=testpassword
-OIDC_ISSUER=https://auth.test.local/application/o/cfd-remote-assist/
-OIDC_JWKS_URI=https://auth.test.local/application/o/cfd-remote-assist/jwks/
+OIDC_ISSUER=https://auth.test.local/application/o/eud-remote-assist/
+OIDC_JWKS_URI=https://auth.test.local/application/o/eud-remote-assist/jwks/
 ```
 
 ```bash
@@ -204,6 +204,6 @@ cat VERSION                     # must match
 | Item | Value |
 |------|-------|
 | Repo | https://github.com/cfd2474/EUD_Remote_Assist_Portal |
-| infra-TAK clone path | `~/cfd-remote-assist` |
+| infra-TAK clone path | `~/eud-remote-assist` |
 | Loopback upstream port | `8767` |
 | Device TLS port | `8448` |
