@@ -1,6 +1,6 @@
 {
   "name": "eud-remote-assist-server",
-  "version": "2.2.20",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "scripts": {
