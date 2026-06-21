@@ -51,7 +51,19 @@ export function downsampleLocationHistory(
   const sampled: LocationHistoryPoint[] = [];
 
   for (const point of points) {
+    const ageMs = now.getTime() - point.recorded_at.getTime();
+    if (ageMs < 0) continue;
+    const ageMin = ageMs / MS_MIN;
+
     const key = locationHistoryBucketKey(point.recorded_at, now);
+
+    // Keep all points within the first 2 hours (120 minutes)
+    if (ageMin <= 120) {
+      if (key != null) seen.add(key);
+      sampled.push(point);
+      continue;
+    }
+
     if (key == null || seen.has(key)) {
       continue;
     }
