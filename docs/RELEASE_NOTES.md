@@ -1,7 +1,3 @@
-
-## v3.0.1
-* WebRTC UI: Replaced video element with "Stream Failed" placeholder when WebRTC stream fails to establish.
-* WebRTC UI: Removed "Retry WebRTC" button when stream is connecting or already active to prevent accidental resets.
 # EUD Remote Assist Portal — Release Notes
 
 Running changelog for the **portal server and admin UI**. Update this file on every version release.
@@ -9,6 +5,25 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 **Format:** Each release is wrapped in `RELEASE_START` / `RELEASE_END` HTML comments with a `version=` attribute. New entries are added **at the top** (newest first). Automation and the admin portal parse these blocks.
 
 ---
+
+<!-- RELEASE_START version=3.0.2 -->
+## Version 3.0.2
+
+**Portal**
+
+- Explicitly defined the Docker Compose project name to prevent accidental database wiping when the repository folder is renamed.
+
+<!-- RELEASE_END version=3.0.2 -->
+
+<!-- RELEASE_START version=3.0.1 -->
+## Version 3.0.1
+
+**Portal**
+
+- WebRTC UI: Replaced video element with "Stream Failed" placeholder when WebRTC stream fails to establish.
+- WebRTC UI: Removed "Retry WebRTC" button when stream is connecting or already active to prevent accidental resets.
+
+<!-- RELEASE_END version=3.0.1 -->
 
 <!-- RELEASE_START version=3.0.0 -->
 ## Version 3.0.0
