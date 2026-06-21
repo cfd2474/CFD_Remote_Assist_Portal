@@ -12,7 +12,7 @@ export const config = {
   databaseUrl: requireEnv("DATABASE_URL"),
   oidc: {
     issuer: requireEnv("OIDC_ISSUER"),
-    audience: process.env.OIDC_AUDIENCE || undefined,
+    audience: requireEnv("OIDC_AUDIENCE"),
     jwksUri:
       process.env.OIDC_JWKS_URI ??
       `${requireEnv("OIDC_ISSUER").replace(/\/$/, "")}/.well-known/jwks`,

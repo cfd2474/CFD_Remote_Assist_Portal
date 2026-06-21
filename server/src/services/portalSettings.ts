@@ -70,6 +70,13 @@ export async function loadPortalSettings(): Promise<void> {
     const parsed = JSON.parse(raw) as PortalSettingsFile;
     portalGithubToken = parsed.githubToken?.trim() || undefined;
     portalServerPort = parsed.serverPort;
+
+    // L-5: Enforce 0600 permissions on startup in case it was created manually
+    try {
+      await chmod(SETTINGS_PATH, 0o600);
+    } catch {
+      // Best effort
+    }
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") {
