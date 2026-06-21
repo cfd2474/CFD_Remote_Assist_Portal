@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=3.0.0 -->
+## Version 3.0.0
+
+**Portal & App**
+
+- Re-branded and completely renamed the project from CFD Remote Assist to EUD Remote Assist.
+- Migrated all infrastructure configurations, docker container namespaces, database identifiers, documentation, and internal code names to the new `eud-remote-assist` standard.
+
+<!-- RELEASE_END version=3.0.0 -->
+
 <!-- RELEASE_START version=2.2.26 -->
 ## Version 2.2.26
 
