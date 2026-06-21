@@ -13,6 +13,9 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 - Re-branded and completely renamed the project from CFD Remote Assist to EUD Remote Assist.
 - Migrated all infrastructure configurations, docker container namespaces, database identifiers, documentation, and internal code names to the new `eud-remote-assist` standard.
+- **QR Code Registration**: Introduced a streamlined enrollment flow allowing new devices to register simply by scanning a dynamically generated QR code directly from the portal UI.
+- **Token Security**: Overhauled authentication by introducing secure, short-lived enrollment tokens and encrypted API tokens for persistent device authorization.
+- **Security Enhancements**: Implemented stricter API endpoint validation, HMAC verification for critical payloads, and fortified the device gateway service against unauthorized connection attempts.
 
 <!-- RELEASE_END version=3.0.0 -->
 
