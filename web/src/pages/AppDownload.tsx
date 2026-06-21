@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
+import ReactMarkdown from "react-markdown";
 import { fetchLatestApk } from "../api/client";
 import type { LatestApkRelease } from "../types";
 
@@ -89,6 +90,14 @@ export function AppDownload() {
               </p>
             </div>
           </div>
+          {apk.releaseNotes && (
+            <div className="app-download-release-notes" style={{ marginTop: "2rem", borderTop: "1px solid #eee", paddingTop: "1rem" }}>
+              <h3>Release Notes</h3>
+              <div className="markdown-body">
+                <ReactMarkdown>{apk.releaseNotes}</ReactMarkdown>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </div>

@@ -6,6 +6,7 @@ export interface LatestApkRelease {
   filename: string;
   downloadUrl: string;
   releaseTag: string;
+  releaseNotes: string;
 }
 
 interface GitHubReleaseAsset {
@@ -15,6 +16,7 @@ interface GitHubReleaseAsset {
 
 interface GitHubRelease {
   tag_name: string;
+  body: string;
   assets: GitHubReleaseAsset[];
 }
 
@@ -90,6 +92,7 @@ export async function getLatestApkRelease(): Promise<LatestApkRelease | null> {
           filename: asset.name,
           downloadUrl: asset.browser_download_url,
           releaseTag: release.tag_name,
+          releaseNotes: release.body || "",
         };
       }
     }

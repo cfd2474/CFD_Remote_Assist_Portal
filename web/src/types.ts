@@ -81,6 +81,7 @@ export interface LatestApkRelease {
   filename: string;
   downloadUrl: string;
   releaseTag: string;
+  releaseNotes: string;
 }
 
 export interface PortalGithubConfig {
