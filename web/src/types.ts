@@ -89,4 +89,6 @@ export interface PortalGithubConfig {
   tokenConfigured: boolean;
   tokenSource: "environment" | "portal" | null;
   serverPort: number;
+  turnServerUrl: string;
+  turnCredentialConfigured: boolean;
 }

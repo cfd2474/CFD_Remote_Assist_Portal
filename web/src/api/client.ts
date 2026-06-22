@@ -178,6 +178,32 @@ export async function clearPortalGithubToken(
   );
 }
 
+export async function applyPortalTurnSettings(
+  user: User,
+  turnServerUrl: string,
+  turnUsername?: string,
+  turnCredential?: string
+): Promise<PortalGithubConfig & { ok: true }> {
+  return apiFetch<PortalGithubConfig & { ok: true }>(
+    "/api/admin/portal-config/turn",
+    user,
+    {
+      method: "PUT",
+      body: JSON.stringify({ turnServerUrl, turnUsername, turnCredential }),
+    }
+  );
+}
+
+export async function clearPortalTurnSettings(
+  user: User
+): Promise<PortalGithubConfig & { ok: true }> {
+  return apiFetch<PortalGithubConfig & { ok: true }>(
+    "/api/admin/portal-config/turn",
+    user,
+    { method: "DELETE" }
+  );
+}
+
 export async function applyPortalServerPort(
   user: User,
   port: number

@@ -12,3 +12,6 @@ nginx/certs/*.pem
 docs/dev-server-credentials.md
 docker-compose.override.yml
 *.apk
+
+# Reports
+azure_nsg_configuration_report.md

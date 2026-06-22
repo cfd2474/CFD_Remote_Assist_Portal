@@ -11,7 +11,7 @@ import {
   setRemoteAdminActive,
 } from "../services/devices.js";
 import { hub } from "../ws/hub.js";
-import { queueCommand } from "../services/commands.js";
+import { queueCommand, type CommandDeliveryOptions } from "../services/commands.js";
 import { setRemoteSessionActive, getSignalingStatus, getSignalingReplay } from "../services/signalingSession.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { getLatestApkRelease } from "../services/githubReleases.js";
@@ -21,6 +21,8 @@ import {
   setPortalGithubToken,
   validateGithubToken,
   getGithubApkRepo,
+  setTurnSettings,
+  clearTurnSettings,
 } from "../services/portalSettings.js";
 import { resolveModelDisplays, getModelDisplay } from "../services/phoneDb.js";
 import type { ControlPacket, DeviceCommand } from "../types.js";
@@ -204,13 +206,28 @@ adminApiRouter.post("/devices/:uid/command", async (req, res) => {
       return;
     }
 
-    let commandOptions: { pin?: string } | undefined = undefined;
+    let commandOptions: CommandDeliveryOptions | undefined = undefined;
     if (pin && command === "REMOTE_UNLOCK") {
       if (!device.public_key) {
         res.status(400).json({ error: "Device has no registered public key for E2EE" });
         return;
       }
       commandOptions = { pin: encryptPin(pin, device.public_key) };
+    }
+
+    if (command === "START_REMOTE_ADMIN") {
+      const { getTurnSettings } = await import("../services/portalSettings.js");
+      const turn = getTurnSettings();
+      if (turn.turnServerUrl) {
+        commandOptions = commandOptions || {};
+        commandOptions.iceServers = [
+          {
+            urls: turn.turnServerUrl,
+            username: turn.turnUsername || undefined,
+            credential: turn.turnCredential || undefined,
+          },
+        ];
+      }
     }
 
     const sent = hub.sendCommand(
@@ -425,6 +442,39 @@ adminApiRouter.put("/portal-config/server-port", async (req, res) => {
     console.error("Apply Server Port error:", err);
     res.status(400).json({
       error: err instanceof Error ? err.message : "Failed to apply Server Port",
+    });
+  }
+});
+
+adminApiRouter.put("/portal-config/turn", async (req, res) => {
+  const url = req.body?.turnServerUrl;
+  const username = req.body?.turnUsername;
+  const credential = req.body?.turnCredential;
+
+  if (typeof url !== "string") {
+    res.status(400).json({ error: "turnServerUrl is required and must be a string" });
+    return;
+  }
+
+  try {
+    await setTurnSettings(url, username, credential);
+    res.json({ ok: true, ...getPortalConfigStatus() });
+  } catch (err) {
+    console.error("Apply TURN Settings error:", err);
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Failed to apply TURN Settings",
+    });
+  }
+});
+
+adminApiRouter.delete("/portal-config/turn", async (_req, res) => {
+  try {
+    await clearTurnSettings();
+    res.json({ ok: true, ...getPortalConfigStatus() });
+  } catch (err) {
+    console.error("Clear TURN Settings error:", err);
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Failed to clear TURN Settings",
     });
   }
 });

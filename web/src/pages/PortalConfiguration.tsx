@@ -5,6 +5,8 @@ import {
   clearPortalGithubToken,
   fetchPortalConfig,
   applyPortalServerPort,
+  applyPortalTurnSettings,
+  clearPortalTurnSettings,
 } from "../api/client";
 import type { PortalGithubConfig } from "../types";
 
@@ -19,6 +21,10 @@ export function PortalConfiguration() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [turnUrl, setTurnUrl] = useState("");
+  const [turnUsername, setTurnUsername] = useState("");
+  const [turnCredential, setTurnCredential] = useState("");
+
   const loadConfig = async () => {
     if (!auth.user) {
       return;
@@ -31,6 +37,7 @@ export function PortalConfiguration() {
       const data = await fetchPortalConfig(auth.user);
       setConfig(data);
       setServerPort(data.serverPort.toString());
+      setTurnUrl(data.turnServerUrl || "");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load portal configuration"
@@ -109,6 +116,46 @@ export function PortalConfiguration() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to clear GitHub token");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleApplyTurn = async () => {
+    if (!auth.user || !turnUrl.trim()) return;
+    setApplying(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const data = await applyPortalTurnSettings(
+        auth.user,
+        turnUrl.trim(),
+        turnUsername.trim(),
+        turnCredential.trim()
+      );
+      setConfig(data);
+      setSuccessMessage("TURN server settings applied.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply TURN settings");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleClearTurn = async () => {
+    if (!auth.user) return;
+    setClearing(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const data = await clearPortalTurnSettings(auth.user);
+      setConfig(data);
+      setTurnUrl("");
+      setTurnUsername("");
+      setTurnCredential("");
+      setSuccessMessage("TURN server settings removed. Devices will use standard STUN.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear TURN settings");
     } finally {
       setClearing(false);
     }
@@ -245,6 +292,82 @@ export function PortalConfiguration() {
               >
                 {applying ? "Saving…" : "Save Port"}
               </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {config ? (
+        <section className="panel portal-config-panel" style={{ marginTop: "2rem" }}>
+          <h2>Alternate TURN/STUN Server</h2>
+          <p className="portal-config-intro">
+            Define a custom TURN or STUN server to be used by Android devices when establishing
+            the WebRTC connection. This is required if the device is on a network that blocks standard
+            WebRTC traffic.
+          </p>
+
+          <div className="portal-config-status">
+            {config.turnServerUrl ? (
+              <span className="badge badge-online">
+                Active: {config.turnServerUrl} {config.turnCredentialConfigured ? "(Authenticated)" : ""}
+              </span>
+            ) : (
+              <span className="badge badge-offline">Using default STUN server</span>
+            )}
+          </div>
+
+          <div className="portal-config-form">
+            <label className="filter-field portal-config-token-field">
+              <span>Server URL</span>
+              <input
+                type="text"
+                value={turnUrl}
+                onChange={(event) => setTurnUrl(event.target.value)}
+                placeholder="turn:turn.ops.coronaca.gov:3478"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label className="filter-field portal-config-token-field">
+              <span>Username (Optional)</span>
+              <input
+                type="text"
+                value={turnUsername}
+                onChange={(event) => setTurnUsername(event.target.value)}
+                placeholder="username"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label className="filter-field portal-config-token-field">
+              <span>Credential/Password (Optional)</span>
+              <input
+                type="password"
+                value={turnCredential}
+                onChange={(event) => setTurnCredential(event.target.value)}
+                placeholder="password"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <div className="portal-config-actions">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={applying || !turnUrl.trim()}
+                onClick={() => void handleApplyTurn()}
+              >
+                {applying ? "Applying…" : "Apply"}
+              </button>
+              {config.turnServerUrl ? (
+                <button
+                  type="button"
+                  disabled={clearing}
+                  onClick={() => void handleClearTurn()}
+                >
+                  {clearing ? "Removing…" : "Remove TURN Config"}
+                </button>
+              ) : null}
             </div>
           </div>
         </section>

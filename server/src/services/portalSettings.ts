@@ -11,10 +11,16 @@ const SETTINGS_PATH =
 type PortalSettingsFile = {
   githubToken?: string;
   serverPort?: number;
+  turnServerUrl?: string;
+  turnUsername?: string;
+  turnCredential?: string;
 };
 
 let portalGithubToken: string | undefined;
 let portalServerPort: number | undefined;
+let portalTurnServerUrl: string | undefined;
+let portalTurnUsername: string | undefined;
+let portalTurnCredential: string | undefined;
 
 function envGithubToken(): string | undefined {
   return config.github.token;
@@ -33,34 +39,39 @@ export type PortalConfigStatus = {
   tokenConfigured: boolean;
   tokenSource: "environment" | "portal" | null;
   serverPort: number;
+  turnServerUrl: string;
+  turnCredentialConfigured: boolean;
 };
 
 export function getPortalConfigStatus(): PortalConfigStatus {
   const port = portalServerPort ?? 8448;
+  const baseStatus = {
+    apkRepo: getGithubApkRepo(),
+    serverPort: port,
+    turnServerUrl: portalTurnServerUrl ?? "",
+    turnCredentialConfigured: !!portalTurnCredential,
+  };
 
   if (envGithubToken()) {
     return {
-      apkRepo: getGithubApkRepo(),
+      ...baseStatus,
       tokenConfigured: true,
       tokenSource: "environment",
-      serverPort: port,
     };
   }
 
   if (portalGithubToken) {
     return {
-      apkRepo: getGithubApkRepo(),
+      ...baseStatus,
       tokenConfigured: true,
       tokenSource: "portal",
-      serverPort: port,
     };
   }
 
   return {
-    apkRepo: getGithubApkRepo(),
+    ...baseStatus,
     tokenConfigured: false,
     tokenSource: null,
-    serverPort: port,
   };
 }
 
@@ -70,6 +81,9 @@ export async function loadPortalSettings(): Promise<void> {
     const parsed = JSON.parse(raw) as PortalSettingsFile;
     portalGithubToken = parsed.githubToken?.trim() || undefined;
     portalServerPort = parsed.serverPort;
+    portalTurnServerUrl = parsed.turnServerUrl?.trim() || undefined;
+    portalTurnUsername = parsed.turnUsername?.trim() || undefined;
+    portalTurnCredential = parsed.turnCredential || undefined;
 
     // L-5: Enforce 0600 permissions on startup in case it was created manually
     try {
@@ -84,6 +98,9 @@ export async function loadPortalSettings(): Promise<void> {
     }
     portalGithubToken = undefined;
     portalServerPort = undefined;
+    portalTurnServerUrl = undefined;
+    portalTurnUsername = undefined;
+    portalTurnCredential = undefined;
   }
 }
 
@@ -96,6 +113,15 @@ async function persistPortalSettings(): Promise<void> {
   }
   if (portalServerPort !== undefined) {
     payload.serverPort = portalServerPort;
+  }
+  if (portalTurnServerUrl) {
+    payload.turnServerUrl = portalTurnServerUrl;
+  }
+  if (portalTurnUsername !== undefined) {
+    payload.turnUsername = portalTurnUsername;
+  }
+  if (portalTurnCredential !== undefined) {
+    payload.turnCredential = portalTurnCredential;
   }
 
   await writeFile(SETTINGS_PATH, `${JSON.stringify(payload, null, 2)}\n`, {
@@ -180,4 +206,34 @@ export async function validateGithubToken(
   if (!res.ok) {
     throw new Error(`GitHub API returned ${res.status} while validating the token.`);
   }
+}
+
+export function getTurnSettings() {
+  return {
+    turnServerUrl: portalTurnServerUrl,
+    turnUsername: portalTurnUsername,
+    turnCredential: portalTurnCredential,
+  };
+}
+
+export async function setTurnSettings(
+  url: string,
+  username?: string,
+  credential?: string
+): Promise<void> {
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) {
+    throw new Error("TURN Server URL is required.");
+  }
+  portalTurnServerUrl = trimmedUrl;
+  portalTurnUsername = username?.trim();
+  portalTurnCredential = credential;
+  await persistPortalSettings();
+}
+
+export async function clearTurnSettings(): Promise<void> {
+  portalTurnServerUrl = undefined;
+  portalTurnUsername = undefined;
+  portalTurnCredential = undefined;
+  await persistPortalSettings();
 }

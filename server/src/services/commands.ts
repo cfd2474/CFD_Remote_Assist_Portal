@@ -5,10 +5,12 @@ export interface DeviceCommandMessage {
   type: "command";
   command: DeviceCommand;
   pin?: string;
+  iceServers?: Array<{ urls: string; username?: string; credential?: string }>;
 }
 
 export interface CommandDeliveryOptions {
   pin?: string;
+  iceServers?: Array<{ urls: string; username?: string; credential?: string }>;
 }
 
 function buildCommandMessage(
@@ -24,6 +26,10 @@ function buildCommandMessage(
     message.pin = options.pin;
   }
 
+  if (options?.iceServers && command === "START_REMOTE_ADMIN") {
+    message.iceServers = options.iceServers;
+  }
+
   return message;
 }
 
@@ -32,10 +38,13 @@ export async function queueCommand(
   command: DeviceCommand,
   options?: CommandDeliveryOptions
 ): Promise<void> {
-  const payload =
-    options?.pin && command === "REMOTE_UNLOCK"
-      ? JSON.stringify({ pin: options.pin })
-      : null;
+  let payloadObj: Record<string, unknown> | null = null;
+  if (options?.pin && command === "REMOTE_UNLOCK") {
+    payloadObj = { pin: options.pin };
+  } else if (options?.iceServers && command === "START_REMOTE_ADMIN") {
+    payloadObj = { iceServers: options.iceServers };
+  }
+  const payload = payloadObj ? JSON.stringify(payloadObj) : null;
 
   await pool.query(
     `INSERT INTO pending_commands (uid, command, command_payload)
@@ -48,7 +57,7 @@ export async function queueCommand(
 export async function drainCommands(uid: string): Promise<DeviceCommandMessage[]> {
   const result = await pool.query<{
     command: DeviceCommand;
-    command_payload: { pin?: string } | null;
+    command_payload: { pin?: string; iceServers?: Array<{ urls: string; username?: string; credential?: string }> } | null;
   }>(
     `DELETE FROM pending_commands
      WHERE uid = $1
@@ -65,6 +74,7 @@ export async function drainCommands(uid: string): Promise<DeviceCommandMessage[]
   return result.rows.map((row) =>
     buildCommandMessage(row.command, {
       pin: row.command_payload?.pin,
+      iceServers: row.command_payload?.iceServers,
     })
   );
 }
