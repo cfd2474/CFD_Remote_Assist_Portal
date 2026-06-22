@@ -312,7 +312,7 @@ export function PortalConfiguration() {
                 Active: {config.turnServerUrl} {config.turnCredentialConfigured ? "(Authenticated)" : ""}
               </span>
             ) : (
-              <span className="badge badge-offline">Using default STUN server</span>
+              <span className="badge badge-offline">Using default STUN server (stun.l.google.com:19302)</span>
             )}
           </div>
 
