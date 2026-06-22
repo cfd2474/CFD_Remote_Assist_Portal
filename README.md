@@ -80,6 +80,21 @@ Portal: `http://localhost` (or your configured host)
 1. Push or pull from this repository as needed.
 2. On your Ubuntu 22.04 server, clone the repo and run Docker Compose.
 
+### Azure Deployment Requirements
+
+If you are deploying the portal on Microsoft Azure, Azure's Network Security Group (NSG) and default symmetric NAT require explicit port openings to allow WebRTC and signaling traffic to function correctly. You must configure the inbound port rules on your VM's NSG as follows:
+
+#### 1. Web Portal & Signaling
+These ports allow web traffic and the secure WebSockets required to negotiate WebRTC connections.
+*   **Port 8448 (TCP):** Required. Default portal application port.
+*   **Port 443 / 80 (TCP):** Required only if you are using an external reverse proxy or automatic SSL provisioning (e.g. Let's Encrypt).
+
+#### 2. WebRTC Media Relay / TURN Server
+Azure deployments typically require a TURN server (e.g., Coturn) to relay peer-to-peer video streams because direct UDP hole punching often fails across Azure's firewalls.
+*   **Port 3478 (UDP & TCP):** Required. Standard STUN/TURN negotiation.
+*   **Port 5349 (UDP & TCP):** Recommended. Secure TURN over TLS.
+*   **Ports 49152-65535 (UDP):** Required. Ephemeral port range used to relay the dynamic WebRTC media (video/audio) packets. If this UDP range is blocked, the remote view will permanently hang at "Connecting."
+
 Full steps: [docs/manual-install.md](docs/manual-install.md)  
 infra-TAK co-deploy: [docs/infratak-integration.md](docs/infratak-integration.md)
 
