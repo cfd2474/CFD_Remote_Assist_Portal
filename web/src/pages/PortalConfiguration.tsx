@@ -323,7 +323,7 @@ export function PortalConfiguration() {
                 type="text"
                 value={turnUrl}
                 onChange={(event) => setTurnUrl(event.target.value)}
-                placeholder="turn:turn.ops.coronaca.gov:3478"
+                placeholder="turn:turn.domain.com:port"
                 autoComplete="off"
                 spellCheck={false}
               />
