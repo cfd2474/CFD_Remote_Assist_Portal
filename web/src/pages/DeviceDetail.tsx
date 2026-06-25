@@ -71,6 +71,7 @@ export function DeviceDetail() {
   const [removing, setRemoving] = useState(false);
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [lockModalOpen, setLockModalOpen] = useState(false);
+  const [constrainedModalOpen, setConstrainedModalOpen] = useState(false);
   const [locking, setLocking] = useState(false);
   const [deviceLocked, setDeviceLocked] = useState(false);
   const [deviceLockedReason, setDeviceLockedReason] = useState<string | null>(
@@ -186,6 +187,9 @@ export function DeviceDetail() {
           ? payload.reason
           : "PIN required for full access";
       setDeviceLockedReason(reason);
+    }
+    if (lastEvent?.event === "WEBRTC_UNAVAILABLE") {
+      setConstrainedModalOpen(true);
     }
     if (lastEvent?.event === "COMMAND_HANDLED") {
       const payload = lastEvent.payload as Record<string, unknown> | undefined;
@@ -582,6 +586,16 @@ export function DeviceDetail() {
         <p>
           Locking screen will power off the screen and initiate a screen lock if one is present.
         </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={constrainedModalOpen}
+        title="WebRTC Unavailable"
+        confirmLabel="Ok"
+        onConfirm={() => setConstrainedModalOpen(false)}
+        onCancel={() => setConstrainedModalOpen(false)}
+      >
+        <p>WebRTC is unavailable because the device is on a constrained network.</p>
       </ConfirmModal>
 
       <ConfirmModal
