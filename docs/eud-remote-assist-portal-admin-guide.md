@@ -1,6 +1,6 @@
 # EUD Remote Assist Portal — Administrator Guide
 
-**Release 2.2.26**
+**Release 3.1.1**
 
 The Remote Assist Portal is the web console for managing your fleet of company-owned Android devices. From a single browser you can see where every device is, confirm it's online, push a ping or location request, and take live control of the screen for hands-on support.
 
@@ -10,6 +10,7 @@ The Remote Assist Portal is the web console for managing your fleet of company-o
 
 | Capability | Description |
 |---|---|
+| Enrollment | Generate MDM JSON config blobs or scannable QR tokens to enroll devices securely. |
 | Device registry | Every enrolled device appears in one list with status, last check-in, model, and phone number. |
 | Location tracking | Devices report location and battery on a set interval (default 15 min). |
 | Ping | Make a device alert the user so they can locate it or confirm it's in hand. |
@@ -19,7 +20,18 @@ The Remote Assist Portal is the web console for managing your fleet of company-o
 
 ---
 
-## 2. Signing in
+## 2. Enrollment & Tokens
+
+The **Enrollment** page is where you generate secure tokens to onboard new devices.
+
+- **QR Tokens**: Best for manual installs. Set an expiration limit (e.g., "Single Use" or "10 minutes") and a QR code will be generated. The device user simply scans this code from the app to register.
+- **MDM Tokens**: Best for automated fleet rollouts. Generates a permanent JSON configuration block that you can copy directly into your MDM platform's managed app restrictions.
+
+The active tokens table displays the remaining uses or time for each token. Once a token is fully consumed or expires, it is automatically marked inactive and can be safely removed. You can also manually revoke a token at any time.
+
+---
+
+## 3. Signing in
 
 The portal is protected by **single sign-on (OIDC / Authentik)**.
 
@@ -28,13 +40,13 @@ The portal is protected by **single sign-on (OIDC / Authentik)**.
 3. Enter your admin credentials.
 4. After login you land on the **Devices** list.
 
-> Only accounts authorized in Authentik can reach the portal. Device APIs use a separate per-device secret and never log in here.
+> Only accounts authorized in Authentik can reach the portal. Device APIs use a separate per-device identity and never log in here.
 
 See [authentik-setup.md](authentik-setup.md) for identity provider configuration.
 
 ---
 
-## 3. The Devices list
+## 4. The Devices list
 
 The landing page shows every registered device. For each one you'll typically see:
 
@@ -46,11 +58,11 @@ The landing page shows every registered device. For each one you'll typically se
 
 Click any row to open the **Device detail** view.
 
-At the bottom of the page, there is an **Export Device List** link. Clicking this link opens a modal where you can customize the CSV export by checking or unchecking specific values (UID, Name, Model, Phone number, App version, Agency, Last location coordinate, Last location seen date/time). Tapping **Export** downloads a CSV file with the naming convention `EUD_export_<date/time>.csv`.
+At the bottom of the page, there is an **Export Device List** link. Clicking this link opens a modal where you can customize the CSV export by checking or unchecking specific values. Tapping **Export** downloads a CSV file with the naming convention `EUD_export_<date/time>.csv`.
 
 ---
 
-## 4. Device detail & actions
+## 5. Device detail & actions
 
 The detail view is where you act on a single device. It displays device-specific telemetry and offers administrative action buttons.
 
@@ -67,7 +79,7 @@ Sends `REQUEST_LOCATION` for an immediate position fix rather than waiting for t
 
 ### Remote Assist (screen view + control)
 1. Click **Start Remote Assist**. This sends `START_REMOTE_ADMIN`.
-2. The device begins streaming its screen to your browser over WebRTC.
+2. The device begins streaming its screen to your browser over WebRTC. If a constrained network is detected, it will dynamically adjust or prevent WebRTC.
 3. Click or tap on the streamed image to drive the device — each interaction is sent as a touch packet (`CLICK` with x/y as a percentage of the screen, so it works across any resolution).
 4. Click **Stop Remote Assist** (`STOP_REMOTE_ADMIN`) when finished. Always stop the session when you're done so the device isn't left in a controllable state.
 
@@ -76,7 +88,7 @@ Deletes the device record and **all associated data** from the server. This does
 
 ---
 
-## 5. Understanding delivery: instant vs. queued
+## 6. Understanding delivery: instant vs. queued
 
 Commands reach devices two ways:
 
@@ -87,7 +99,7 @@ If an action seems slow or unresponsive, the most common cause is that the devic
 
 ---
 
-## 6. Quick troubleshooting
+## 7. Quick troubleshooting
 
 | Symptom | Likely cause | Check |
 |---|---|---|
@@ -99,7 +111,7 @@ If an action seems slow or unresponsive, the most common cause is that the devic
 
 ---
 
-## 7. Privacy & operational notes
+## 8. Privacy & operational notes
 
 - Remote Assist gives full live view and control of the device. Use it only for legitimate support, and stop the session when done.
 - All admin access is tied to a named Authentik identity — actions are attributable.
