@@ -292,24 +292,27 @@ export function Enrollment() {
                   })()}
                 </td>
                 <td>
-                  <button onClick={() => setSelectedToken(t)} disabled={!t.is_active} style={{ marginRight: "0.5rem" }}>
-                    {t.type === 'mdm' ? 'Show Config' : 'Show QR'}
-                  </button>
-                  {t.is_active ? (
-                    <button
-                      onClick={() => handleRevoke(t.token)}
-                      className="danger-button"
-                    >
-                      Revoke
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleDelete(t.token)}
-                      className="danger-button"
-                    >
-                      Remove
-                    </button>
-                  )}
+                  {(() => {
+                    const isValid = t.is_active && !(t.expires_at && new Date(t.expires_at).getTime() < Date.now());
+                    return (
+                      <>
+                        {isValid && (
+                          <button onClick={() => setSelectedToken(t)} style={{ marginRight: "0.5rem" }}>
+                            {t.type === 'mdm' ? 'Show Config' : 'Show QR'}
+                          </button>
+                        )}
+                        {isValid ? (
+                          <button onClick={() => handleRevoke(t.token)} className="danger-button">
+                            Revoke
+                          </button>
+                        ) : (
+                          <button onClick={() => handleDelete(t.token)} className="danger-button">
+                            Remove
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </td>
               </tr>
             ))}
