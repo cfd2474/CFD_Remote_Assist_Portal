@@ -13,6 +13,8 @@ export function Enrollment() {
   const [agency, setAgency] = useState("");
   const [description, setDescription] = useState("");
   const [tlsPinHash, setTlsPinHash] = useState("");
+  const [tokenType, setTokenType] = useState<"mdm" | "qr">("qr");
+  const [duration, setDuration] = useState<string>("no_expiration");
 
   const [selectedToken, setSelectedToken] = useState<EnrollmentToken | null>(null);
 
@@ -46,10 +48,16 @@ export function Enrollment() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!auth.user) return;
+    if (!description) {
+      setError("Description is required");
+      return;
+    }
     try {
       await createEnrollmentToken(auth.user, {
+        type: tokenType,
+        duration: tokenType === "qr" ? duration : undefined,
         agency: agency || undefined,
-        description: description || undefined,
+        description: description,
         tls_pin_hash: tlsPinHash || undefined,
       });
       setAgency("");
@@ -106,13 +114,19 @@ export function Enrollment() {
         >
           Dismiss
         </button>
-        <h3>Scan QR Code to Enroll Device</h3>
-        <p style={{ marginBottom: "1rem" }}>
-          Use the BYOD scanner in the EUD Remote Assist app to scan this code.
-        </p>
-        <div style={{ background: "white", padding: "1rem", display: "inline-block", borderRadius: "8px" }}>
-          <QRCodeSVG value={payload} size={256} />
-        </div>
+        <h3>{t.type === 'mdm' ? 'MDM Provisioning Config' : 'Scan QR Code to Enroll Device'}</h3>
+        
+        {t.type === 'qr' && (
+          <>
+            <p style={{ marginBottom: "1rem" }}>
+              Use the BYOD scanner in the EUD Remote Assist app to scan this code.
+            </p>
+            <div style={{ background: "white", padding: "1rem", display: "inline-block", borderRadius: "8px" }}>
+              <QRCodeSVG value={payload} size={256} />
+            </div>
+          </>
+        )}
+
         <div style={{ marginTop: "1rem" }}>
           <strong>MDM Provisioning Config:</strong>
           <pre style={{ background: "#1a1a1a", padding: "1rem", borderRadius: "4px", overflowX: "auto" }}>
@@ -136,9 +150,49 @@ export function Enrollment() {
         <h3>Generate New Token</h3>
         <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div>
-            <label>Description (Optional)</label>
+            <label style={{ marginRight: "1rem" }}>
+              <input 
+                type="radio" 
+                name="tokenType" 
+                value="mdm" 
+                checked={tokenType === "mdm"} 
+                onChange={() => setTokenType("mdm")} 
+              /> MDM Token
+            </label>
+            <label>
+              <input 
+                type="radio" 
+                name="tokenType" 
+                value="qr" 
+                checked={tokenType === "qr"} 
+                onChange={() => setTokenType("qr")} 
+              /> QR Token
+            </label>
+          </div>
+          
+          {tokenType === "qr" && (
+            <div>
+              <label>Token Duration</label>
+              <select 
+                value={duration} 
+                onChange={(e) => setDuration(e.target.value)}
+                style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
+              >
+                <option value="single_use">Single Use - token expires after one use</option>
+                <option value="10_min">10 minutes - token expires in 10 minutes</option>
+                <option value="1_hour">1 hour - token expires in 1 hour</option>
+                <option value="8_hours">8 hours - token expires in 8 hours</option>
+                <option value="24_hours">24 hours - token expires in 24 hours</option>
+                <option value="no_expiration">No Expiration - token does not expire</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label>Description (Required)</label>
             <input
               type="text"
+              required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. BYOD Contractor Batch"
@@ -182,6 +236,7 @@ export function Enrollment() {
         <table className="data-table" style={{ width: "100%", marginTop: "1rem" }}>
           <thead>
             <tr>
+              <th>Type</th>
               <th>Description</th>
               <th>Agency</th>
               <th>Created</th>
@@ -192,6 +247,7 @@ export function Enrollment() {
           <tbody>
             {tokens.map((t) => (
               <tr key={t.token}>
+                <td>{t.type === 'mdm' ? 'MDM' : 'QR'}</td>
                 <td>{t.description || "—"}</td>
                 <td>{t.agency || "—"}</td>
                 <td>{new Date(t.created_at).toLocaleString()}</td>

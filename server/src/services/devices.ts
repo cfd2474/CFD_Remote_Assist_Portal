@@ -27,15 +27,20 @@ export async function registerDevice(
   }
 
   const tokenCheck = await pool.query(
-    "SELECT * FROM enrollment_tokens WHERE token = $1 AND is_active = TRUE AND (expires_at IS NULL OR expires_at > NOW())",
+    "SELECT * FROM enrollment_tokens WHERE token = $1 AND is_active = TRUE AND (expires_at IS NULL OR expires_at > NOW()) AND (max_uses IS NULL OR uses < max_uses)",
     [data.enrollment_token]
   );
 
   if (tokenCheck.rows.length === 0) {
-    throw new Error("Invalid or expired enrollment token");
+    throw new Error("Invalid, expired, or fully consumed enrollment token");
   }
 
   const tokenRecord = tokenCheck.rows[0];
+
+  await pool.query(
+    "UPDATE enrollment_tokens SET uses = uses + 1, is_active = CASE WHEN max_uses IS NOT NULL AND uses + 1 >= max_uses THEN FALSE ELSE is_active END WHERE token = $1",
+    [data.enrollment_token]
+  );
   if (tokenRecord.agency && !data.agency) {
     data.agency = tokenRecord.agency;
   }

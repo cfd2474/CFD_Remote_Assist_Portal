@@ -68,6 +68,10 @@ CREATE TABLE IF NOT EXISTS enrollment_tokens (
   expires_at TIMESTAMPTZ,
   is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
+
+ALTER TABLE enrollment_tokens ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'qr';
+ALTER TABLE enrollment_tokens ADD COLUMN IF NOT EXISTS max_uses INTEGER;
+ALTER TABLE enrollment_tokens ADD COLUMN IF NOT EXISTS uses INTEGER NOT NULL DEFAULT 0;
 `;
 
 async function migrate() {

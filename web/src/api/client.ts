@@ -220,6 +220,9 @@ export async function applyPortalServerPort(
 
 export interface EnrollmentToken {
   token: string;
+  type: 'mdm' | 'qr';
+  max_uses: number | null;
+  uses: number;
   agency: string | null;
   description: string | null;
   tls_pin_hash: string | null;
@@ -235,7 +238,7 @@ export async function fetchEnrollmentTokens(user: User): Promise<EnrollmentToken
 
 export async function createEnrollmentToken(
   user: User,
-  params: { agency?: string; description?: string; tls_pin_hash?: string }
+  params: { type: 'mdm' | 'qr'; duration?: string; agency?: string; description: string; tls_pin_hash?: string }
 ): Promise<EnrollmentToken> {
   const data = await apiFetch<{ token: EnrollmentToken }>("/api/admin/enrollment-tokens", user, {
     method: "POST",

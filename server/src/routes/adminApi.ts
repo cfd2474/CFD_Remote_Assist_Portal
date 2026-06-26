@@ -494,13 +494,30 @@ adminApiRouter.get("/enrollment-tokens", async (_req, res) => {
 });
 
 adminApiRouter.post("/enrollment-tokens", async (req, res) => {
-  const { agency, description, tls_pin_hash } = req.body;
+  const { type, duration, agency, description, tls_pin_hash } = req.body;
+  if (!description) {
+      return res.status(400).json({ error: "Description is required" });
+  }
+
+  let expiresAt: Date | null = null;
+  let maxUses: number | null = null;
+  
+  const tokenType = type === 'mdm' ? 'mdm' : 'qr';
+
+  if (tokenType === 'qr') {
+      if (duration === 'single_use') maxUses = 1;
+      else if (duration === '10_min') expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      else if (duration === '1_hour') expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      else if (duration === '8_hours') expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      else if (duration === '24_hours') expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+
   const token = randomBytes(24).toString("hex");
   try {
     const result = await pool.query(
-      `INSERT INTO enrollment_tokens (token, agency, description, tls_pin_hash, is_active)
-       VALUES ($1, $2, $3, $4, TRUE) RETURNING *`,
-      [token, agency || null, description || null, tls_pin_hash || null]
+      `INSERT INTO enrollment_tokens (token, type, max_uses, expires_at, agency, description, tls_pin_hash, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE) RETURNING *`,
+      [token, tokenType, maxUses, expiresAt, agency || null, description, tls_pin_hash || null]
     );
     res.json({ token: result.rows[0] });
   } catch (err) {
