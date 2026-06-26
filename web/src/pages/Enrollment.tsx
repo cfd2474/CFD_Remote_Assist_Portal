@@ -240,6 +240,7 @@ export function Enrollment() {
               <th>Description</th>
               <th>Agency</th>
               <th>Created</th>
+              <th>Expiration</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -251,7 +252,34 @@ export function Enrollment() {
                 <td>{t.description || "—"}</td>
                 <td>{t.agency || "—"}</td>
                 <td>{new Date(t.created_at).toLocaleString()}</td>
-                <td>{t.is_active ? "Active" : "Revoked"}</td>
+                <td>
+                  {(() => {
+                    if (t.type === 'mdm') return "No Expiration";
+                    if (t.max_uses !== null) return `${Math.max(0, t.max_uses - t.uses)} use(s) remaining`;
+                    if (t.expires_at) {
+                      const diff = new Date(t.expires_at).getTime() - Date.now();
+                      if (diff <= 0) return "Time limit reached";
+                      const minutes = Math.floor(diff / 60000);
+                      if (minutes >= 60) {
+                        return `${Math.floor(minutes / 60)}h ${minutes % 60}m remaining`;
+                      }
+                      return `${minutes}m remaining`;
+                    }
+                    return "No Expiration";
+                  })()}
+                </td>
+                <td>
+                  {(() => {
+                    if (!t.is_active) {
+                      if (t.max_uses !== null && t.uses >= t.max_uses) return "Consumed";
+                      return "Revoked";
+                    }
+                    if (t.expires_at && new Date(t.expires_at).getTime() < Date.now()) {
+                      return "Expired";
+                    }
+                    return "Active";
+                  })()}
+                </td>
                 <td>
                   <button onClick={() => setSelectedToken(t)} disabled={!t.is_active} style={{ marginRight: "0.5rem" }}>
                     View QR / Config
@@ -276,7 +304,7 @@ export function Enrollment() {
             ))}
             {tokens.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>
                   No enrollment tokens found.
                 </td>
               </tr>
