@@ -6,6 +6,16 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=3.1.1 -->
+## Version 3.1.1
+
+**Portal**
+
+- **Enrollment Enhancements**: Implemented multi-use and time-bounded durations for QR tokens.
+- **UI Updates**: Separated "MDM Token" and "QR Token" views, added intelligent Expiration and Status columns to the active tokens table, and streamlined token rendering based on type.
+
+<!-- RELEASE_END version=3.1.1 -->
+
 <!-- RELEASE_START version=3.1.0 -->
 ## Version 3.1.0
 
