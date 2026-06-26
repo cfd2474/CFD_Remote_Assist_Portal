@@ -128,14 +128,25 @@ export function Enrollment() {
         )}
 
         <div style={{ marginTop: "1rem" }}>
-          <strong>MDM Provisioning Config:</strong>
-          <pre style={{ background: "#1a1a1a", padding: "1rem", borderRadius: "4px", overflowX: "auto" }}>
-            {`{
+          {t.type === 'mdm' ? (
+            <>
+              <strong>MDM Provisioning Config:</strong>
+              <pre style={{ background: "#1a1a1a", padding: "1rem", borderRadius: "4px", overflowX: "auto" }}>
+                {`{
   "enrollment_token": "${t.token}",
   "tls_pin_hash": "${t.tls_pin_hash || ""}",
   "tracking_server_url": "${trackingUrl}"
 }`}
-          </pre>
+              </pre>
+            </>
+          ) : (
+            <>
+              <strong>Token String:</strong>
+              <pre style={{ background: "#1a1a1a", padding: "0.5rem", borderRadius: "4px", overflowX: "auto", display: "inline-block", marginTop: "0.5rem", userSelect: "all" }}>
+                {t.token}
+              </pre>
+            </>
+          )}
         </div>
       </div>
     );
@@ -282,7 +293,7 @@ export function Enrollment() {
                 </td>
                 <td>
                   <button onClick={() => setSelectedToken(t)} disabled={!t.is_active} style={{ marginRight: "0.5rem" }}>
-                    View QR / Config
+                    {t.type === 'mdm' ? 'Show Config' : 'Show QR'}
                   </button>
                   {t.is_active ? (
                     <button
