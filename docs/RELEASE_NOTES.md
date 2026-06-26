@@ -6,6 +6,18 @@ Running changelog for the **portal server and admin UI**. Update this file on ev
 
 ---
 
+<!-- RELEASE_START version=3.1.0 -->
+## Version 3.1.0
+
+**Portal & App**
+
+- **Constrained Network Detection**: Added intelligent detection for bandwidth-limited environments (e.g., satellite links). Screen capture dynamically scales down resolution and FPS to preserve bandwidth.
+- **WebRTC Network Blocking**: WebRTC screen streaming is automatically prevented when a constrained network is detected. The portal now displays a "WebRTC Unavailable" modal to operators, while keeping location and lock commands fully functional.
+- **Security Updates**: Applied underlying security enhancements to the application and infrastructure.
+- **Custom TURN Server Configuration**: Added support for configuring a custom Coturn TURN server with explicit fingerprinting and listening IP.
+
+<!-- RELEASE_END version=3.1.0 -->
+
 <!-- RELEASE_START version=3.0.2 -->
 ## Version 3.0.2
 
